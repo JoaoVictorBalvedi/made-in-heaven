@@ -8,7 +8,7 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 
-import type { ChordAnalysis, Track } from "./types";
+import type { ChordAnalysis, Track, YoutubeCandidate } from "./types";
 
 const AUDIO_EXTENSIONS = ["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus"];
 
@@ -40,4 +40,15 @@ function fileTitle(path: string): string {
 /** Detecta os acordes de uma faixa. Resultado já analisado volta do cache. */
 export function analyzeTrack(path: string): Promise<ChordAnalysis> {
   return invoke<ChordAnalysis>("analyze_track", { path });
+}
+
+/** Busca no YouTube. Só metadados — nada é baixado nesta chamada. */
+export function searchYoutube(query: string): Promise<YoutubeCandidate[]> {
+  return invoke<YoutubeCandidate[]>("search_youtube", { query });
+}
+
+/** Baixa o áudio de um vídeo e devolve a faixa pronta para tocar. */
+export async function importYoutube(videoId: string): Promise<Track> {
+  const path = await invoke<string>("import_youtube", { videoId });
+  return toTrack(path);
 }

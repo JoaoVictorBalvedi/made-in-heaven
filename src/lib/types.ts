@@ -35,3 +35,13 @@ export interface Track {
   /** URL que o webview consegue carregar para reproduzir o arquivo. */
   readonly mediaUrl: string;
 }
+
+/** Um resultado de busca do YouTube. Nada foi baixado ainda. */
+export interface YoutubeCandidate {
+  readonly id: string;
+  readonly title: string;
+  readonly channel: string;
+  /** Ausente em transmissões ao vivo e afins. */
+  readonly durationSeconds: number | null;
+  readonly thumbnail: string | null;
+}

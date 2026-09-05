@@ -2,11 +2,13 @@
   import { onDestroy } from "svelte";
 
   import ChordTimeline from "./lib/ChordTimeline.svelte";
-  import { analyzeTrack, pickAudioFile } from "./lib/backend";
+  import SearchResults from "./lib/SearchResults.svelte";
+  import { analyzeTrack, importYoutube, pickAudioFile, searchYoutube } from "./lib/backend";
+  import { LatestRequest } from "./lib/latestRequest";
   import { AudioPlayer } from "./lib/audioPlayer";
   import { chordAt, isSilence } from "./lib/chordTimeline";
   import { formatTime } from "./lib/formatTime";
-  import type { ChordAnalysis, Track } from "./lib/types";
+  import type { ChordAnalysis, Track, YoutubeCandidate } from "./lib/types";
 
   const player = new AudioPlayer();
 
@@ -23,6 +25,66 @@
     analysis === null ? null : chordAt(analysis.chords, currentTime),
   );
 
+  let query = $state("");
+  let results = $state<YoutubeCandidate[]>([]);
+  let searching = $state(false);
+  let importingId = $state<string | null>(null);
+
+  const searches = new LatestRequest();
+  // Espera a digitação parar antes de buscar: sem isto, cada tecla vira um
+  // processo yt-dlp.
+  const TYPING_PAUSE_MS = 350;
+  let typingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function onQueryInput() {
+    if (typingTimer !== null) clearTimeout(typingTimer);
+    if (query.trim() === "") {
+      results = [];
+      searching = false;
+      return;
+    }
+    searching = true;
+    typingTimer = setTimeout(() => void runSearch(query), TYPING_PAUSE_MS);
+  }
+
+  async function runSearch(term: string) {
+    const ticket = searches.next();
+    try {
+      const found = await searchYoutube(term);
+      if (searches.settle(ticket)) results = found;
+    } catch (cause) {
+      if (searches.settle(ticket)) {
+        error = cause instanceof Error ? cause.message : String(cause);
+        results = [];
+      }
+    } finally {
+      if (searches.isCurrent(ticket)) searching = false;
+    }
+  }
+
+  async function chooseFromYoutube(candidate: YoutubeCandidate) {
+    error = null;
+    importingId = candidate.id;
+    try {
+      await loadTrack(await importYoutube(candidate.id));
+      results = [];
+      query = "";
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      importingId = null;
+    }
+  }
+
+  async function loadTrack(chosen: Track) {
+    await player.load(chosen.mediaUrl);
+    track = chosen;
+    duration = player.duration;
+    currentTime = 0;
+    analysis = null;
+    void analyze(chosen);
+  }
+
   const stopWatching = player.onTime((time) => {
     currentTime = time;
     playing = player.playing;
@@ -38,12 +100,7 @@
       const chosen = await pickAudioFile();
       if (chosen === null) return;
       loading = true;
-      await player.load(chosen.mediaUrl);
-      track = chosen;
-      duration = player.duration;
-      currentTime = 0;
-      analysis = null;
-      void analyze(chosen);
+      await loadTrack(chosen);
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);
       track = null;
@@ -88,6 +145,21 @@
       {loading ? "Carregando…" : "Abrir arquivo…"}
     </button>
   </header>
+
+  <search>
+    <input
+      type="search"
+      bind:value={query}
+      oninput={onQueryInput}
+      placeholder="Buscar uma música no YouTube…"
+      aria-label="Buscar uma música no YouTube"
+    />
+    {#if searching}
+      <p class="pending">Buscando…</p>
+    {:else if results.length > 0}
+      <SearchResults {results} busyId={importingId} onSelect={chooseFromYoutube} />
+    {/if}
+  </search>
 
   {#if error}
     <p class="error" role="alert">{error}</p>
@@ -156,6 +228,27 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  input[type="search"] {
+    font: inherit;
+    color: inherit;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    width: 100%;
+  }
+
+  input[type="search"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .transport {

@@ -25,6 +25,15 @@ pub enum AppError {
 
     #[error("falha ao usar o cache de análises: {0}")]
     Cache(String),
+
+    #[error("não encontrei o {0}. Instale com `brew install {0}` e abra o aplicativo de novo.")]
+    ToolMissing(String),
+
+    #[error("a busca no YouTube falhou: {0}")]
+    SearchFailed(String),
+
+    #[error("não consegui importar deste endereço: {0}")]
+    ImportFailed(String),
 }
 
 /// A interface recebe a mensagem já pronta, não a estrutura do erro.
