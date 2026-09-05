@@ -1,11 +1,18 @@
+/* Paleta tirada da arte do aplicativo: vinil preto com gravação em prata.
+   Monocromática de propósito — a cor que sobra é a do acorde aceso. */
 :root {
-  --ground: #14161a;
-  --surface: #1c1f26;
-  --line: #2a2f3a;
-  --ink: #e8eaed;
-  --ink-dim: #9aa3af;
-  --accent: #f0a04b;
+  --ground: #08080a;
+  --surface: #101014;
+  --surface-raised: #16161c;
+  --line: #1e1e26;
+  --line-strong: #343440;
+  --ink: #f2f0ec;
+  --ink-dim: #85858f;
+  --accent: #f2f0ec;
+  --danger: #e08d84;
   color-scheme: dark;
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -14,7 +21,7 @@ body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
@@ -22,13 +29,22 @@ body {
 button {
   font: inherit;
   color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0.45rem 1.1rem;
   cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 
-button:hover:not(:disabled) { border-color: var(--accent); }
-button:disabled { opacity: 0.4; cursor: default; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:hover:not(:disabled) {
+  border-color: var(--ink-dim);
+  background: var(--surface);
+}
+
+button:disabled { opacity: 0.35; cursor: default; }
+
+button:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 3px;
+}

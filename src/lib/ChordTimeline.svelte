@@ -65,7 +65,7 @@
     overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 16px;
     cursor: pointer;
   }
 
@@ -84,11 +84,12 @@
     align-items: center;
     justify-content: center;
     padding: 0 0.5rem;
-    background: #232833;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    font-size: 1.25rem;
-    font-weight: 600;
+    background: var(--surface-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    font-weight: 400;
     overflow: hidden;
     white-space: nowrap;
   }
@@ -96,7 +97,7 @@
   .chord.active {
     background: var(--accent);
     border-color: var(--accent);
-    color: #1a1206;
+    color: var(--ground);
   }
 
   .chord.silence {
@@ -111,7 +112,7 @@
     bottom: 0;
     width: 2px;
     background: var(--ink);
-    opacity: 0.65;
+    opacity: 0.5;
     pointer-events: none;
   }
 </style>

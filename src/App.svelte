@@ -2,8 +2,10 @@
   import { onDestroy } from "svelte";
 
   import ChordTimeline from "./lib/ChordTimeline.svelte";
+  import FretboardChord from "./lib/FretboardChord.svelte";
   import SearchResults from "./lib/SearchResults.svelte";
   import { analyzeTrack, importYoutube, pickAudioFile, searchYoutube } from "./lib/backend";
+  import { findVoicings } from "./lib/guitarVoicings";
   import { LatestRequest } from "./lib/latestRequest";
   import { AudioPlayer } from "./lib/audioPlayer";
   import { chordAt, isSilence } from "./lib/chordTimeline";
@@ -24,6 +26,19 @@
   const currentChord = $derived(
     analysis === null ? null : chordAt(analysis.chords, currentTime),
   );
+
+  const voicingResult = $derived(
+    currentChord === null || isSilence(currentChord) ? null : findVoicings(currentChord.label),
+  );
+  let positionIndex = $state(0);
+  // Trocou o acorde, volta para a primeira posição: manter o índice faria
+  // saltar para uma forma alta sem motivo.
+  $effect(() => {
+    void currentChord?.label;
+    positionIndex = 0;
+  });
+  const voicing = $derived(voicingResult?.voicings[positionIndex] ?? null);
+  const positionCount = $derived(voicingResult?.voicings.length ?? 0);
 
   let query = $state("");
   let results = $state<YoutubeCandidate[]>([]);
@@ -186,9 +201,34 @@
     {#if analyzing}
       <p class="pending">Analisando os acordes…</p>
     {:else if analysis}
-      <section class="chord" aria-live="polite">
-        <strong>{isSilence(currentChord) ? "–" : currentChord?.label}</strong>
-        <span class="dim">{analysis.chords.length} acordes · {analysis.dictionary}</span>
+      <section class="now" aria-live="polite">
+        <div class="name">
+          <strong>{isSilence(currentChord) ? "–" : currentChord?.label}</strong>
+          {#if voicingResult?.fidelity === "bassDropped"}
+            <small>forma sem o baixo invertido</small>
+          {:else if voicingResult?.fidelity === "simplified"}
+            <small>forma simplificada · {voicingResult.matchedLabel}</small>
+          {/if}
+        </div>
+
+        {#if voicing}
+          <div class="shape">
+            <FretboardChord {voicing} />
+            {#if positionCount > 1}
+              <div class="positions">
+                <button
+                  onclick={() => (positionIndex = (positionIndex - 1 + positionCount) % positionCount)}
+                  aria-label="Forma anterior"
+                >‹</button>
+                <span>{positionIndex + 1}/{positionCount}</span>
+                <button
+                  onclick={() => (positionIndex = (positionIndex + 1) % positionCount)}
+                  aria-label="Próxima forma"
+                >›</button>
+              </div>
+            {/if}
+          </div>
+        {/if}
       </section>
       <ChordTimeline
         chords={analysis.chords}
@@ -206,12 +246,12 @@
 
 <style>
   main {
-    max-width: 60rem;
+    max-width: 58rem;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 2.5rem 2rem 3rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   header {
@@ -222,8 +262,10 @@
   }
 
   h1 {
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -254,16 +296,17 @@
   .transport {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 1rem;
+    border-radius: 999px;
+    padding: 0.75rem 1.25rem;
   }
 
   .play {
-    min-width: 3rem;
-    font-size: 1rem;
+    min-width: 2.75rem;
+    font-size: 0.9rem;
+    padding: 0.45rem 0;
   }
 
   time {
@@ -275,26 +318,62 @@
 
   input[type="range"] {
     flex: 1;
-    accent-color: var(--accent);
+    accent-color: var(--ink);
     cursor: pointer;
   }
 
-  .chord {
+  .now {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 2rem 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    min-height: 15rem;
+  }
+
+  .name {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .name strong {
+    font-family: var(--serif);
+    font-size: 5.5rem;
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+  }
+
+  .name small {
+    color: var(--ink-dim);
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+  }
+
+  .shape {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    padding: 2rem;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    gap: 0.75rem;
   }
 
-  .chord strong {
-    font-size: 4rem;
-    font-weight: 600;
-    line-height: 1;
+  .positions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ink-dim);
+    font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
+  }
+
+  .positions button {
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    line-height: 1.4;
   }
 
   .pending {
@@ -303,9 +382,9 @@
   }
 
   .error {
-    color: #ff8a80;
-    background: #2a1c1c;
-    border: 1px solid #4a2626;
+    color: var(--danger);
+    background: #1a1010;
+    border: 1px solid #3a1f1c;
     border-radius: 8px;
     padding: 0.75rem 1rem;
     margin: 0;
