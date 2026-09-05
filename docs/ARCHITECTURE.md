@@ -97,3 +97,22 @@ Empacotado, o worker é procurado ao lado do executável.
 O `lv-chordia` é fixado numa revisão git auditada, nunca seguindo `main`: é um
 projeto de pesquisa, e uma mudança silenciosa a montante alteraria os acordes
 que o aplicativo mostra sem nenhum aviso.
+
+## Estado do empacotamento
+
+`npm run tauri build` gera `Musica.app` e um DMG, e o aplicativo abre. Mas o
+bundle contém apenas o executável, o ícone e o `Info.plist`: **o worker de
+acordes não é empacotado**. No `.app`, abrir e tocar funciona; analisar falha
+com "não encontrei o programa de análise".
+
+O caminho suportado hoje é `npm run tauri dev`, rodando a partir do código.
+Empacotar o worker exige embutir o interpretador Python e os pesos do modelo
+como sidecar — algo que o PRD deixou fora do escopo de propósito.
+
+A assinatura é `adhoc`, sem identidade de desenvolvedor, então o Gatekeeper
+bloqueia a primeira abertura pelo Finder.
+
+O `yt-dlp` e o `ffmpeg`, ao contrário do worker, continuam funcionando no
+aplicativo empacotado: `find_tool` procura nos diretórios usuais do sistema
+quando o `PATH` herdado é mínimo, que é o caso de um processo aberto pelo
+Finder.
