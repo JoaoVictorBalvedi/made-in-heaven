@@ -113,3 +113,25 @@ export function uniqueChords(chords: readonly TimedChord[]): readonly ChordSumma
   }
   return [...seen].map(([label, data]) => ({ label, ...data }));
 }
+
+/** Quanto tempo leva o brilho de uma troca de acorde para se apagar. */
+const PULSE_DECAY_SECONDS = 1.1;
+
+/** A intensidade do brilho no instante dado, entre 0 e 1.
+ *
+ * Cada acorde novo acende e apaga. É a harmonia que faz o fundo respirar —
+ * dado que o aplicativo já tem, e mais musical do que reagir a volume.
+ */
+export function chordPulse(
+  currentTime: number,
+  chordStart: number | null,
+  decaySeconds: number = PULSE_DECAY_SECONDS,
+): number {
+  if (chordStart === null || decaySeconds <= 0) return 0;
+  const elapsed = currentTime - chordStart;
+  // Antes do acorde começar não há o que acender — acontece ao voltar a música.
+  if (elapsed < 0 || elapsed >= decaySeconds) return 0;
+  const remaining = 1 - elapsed / decaySeconds;
+  // Ao quadrado: cai rápido no começo e alonga o rastro, como um som decaindo.
+  return remaining * remaining;
+}

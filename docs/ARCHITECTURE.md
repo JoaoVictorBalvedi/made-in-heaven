@@ -98,21 +98,30 @@ O `lv-chordia` é fixado numa revisão git auditada, nunca seguindo `main`: é u
 projeto de pesquisa, e uma mudança silenciosa a montante alteraria os acordes
 que o aplicativo mostra sem nenhum aviso.
 
-## Estado do empacotamento
+## Empacotamento
 
-`npm run tauri build` gera `Musica.app` e um DMG, e o aplicativo abre. Mas o
-bundle contém apenas o executável, o ícone e o `Info.plist`: **o worker de
-acordes não é empacotado**. No `.app`, abrir e tocar funciona; analisar falha
-com "não encontrei o programa de análise".
+`npm run tauri build` gera `Musica.app` (7 MB) e um DMG. O pacote inclui o
+**lançador** do worker de acordes como recurso — um script de 366 bytes cujo
+shebang aponta, em caminho absoluto, para o Python do ambiente virtual em
+`tools/chord-worker/.venv`.
 
-O caminho suportado hoje é `npm run tauri dev`, rodando a partir do código.
-Empacotar o worker exige embutir o interpretador Python e os pesos do modelo
-como sidecar — algo que o PRD deixou fora do escopo de propósito.
+Isso significa que **o aplicativo instalado depende do repositório continuar
+onde está**. É uma escolha consciente de um aplicativo pessoal: o ambiente tem
+950 MB por causa do PyTorch, e embuti-lo no pacote — com as bibliotecas nativas
+realocadas — seria trabalho de dias para um aplicativo de um usuário só.
+
+A busca pelo worker segue esta ordem:
+
+1. `MUSICA_CHORD_WORKER`, se definida
+2. o recurso dentro do pacote
+3. o caminho de desenvolvimento, em compilação de depuração
+4. ao lado do executável
 
 A assinatura é `adhoc`, sem identidade de desenvolvedor, então o Gatekeeper
-bloqueia a primeira abertura pelo Finder.
+bloqueia a primeira abertura. `xattr -dr com.apple.quarantine` no pacote
+instalado resolve.
 
-O `yt-dlp` e o `ffmpeg`, ao contrário do worker, continuam funcionando no
-aplicativo empacotado: `find_tool` procura nos diretórios usuais do sistema
-quando o `PATH` herdado é mínimo, que é o caso de um processo aberto pelo
-Finder.
+O `yt-dlp` e o `ffmpeg` são procurados nos diretórios usuais do sistema quando
+o `PATH` herdado é mínimo — o caso de um processo aberto pelo Finder. O
+`yt-dlp` recebe `--ffmpeg-location` explicitamente, porque ele dispara o
+`ffmpeg` por conta própria e procuraria no mesmo `PATH` insuficiente.

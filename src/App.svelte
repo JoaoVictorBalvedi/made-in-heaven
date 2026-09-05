@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
 
+  import AmbientGlow from "./lib/AmbientGlow.svelte";
+  import ProgressionView from "./lib/ProgressionView.svelte";
+  import ScalesView from "./lib/ScalesView.svelte";
+  import Sidebar from "./lib/Sidebar.svelte";
   import ChordOverview from "./lib/ChordOverview.svelte";
   import ChordTimeline from "./lib/ChordTimeline.svelte";
   import FretboardChord from "./lib/FretboardChord.svelte";
@@ -17,14 +21,20 @@
     searchYoutube,
     trackFromEntry,
   } from "./lib/backend";
+  import { loadDiscPalette, type DiscPalette } from "./lib/discPalette";
   import { findVoicings } from "./lib/guitarVoicings";
   import { LatestRequest } from "./lib/latestRequest";
   import { AudioPlayer } from "./lib/audioPlayer";
-  import { chordAt, isSilence, uniqueChords } from "./lib/chordTimeline";
+  import { ChordSynth } from "./lib/chordSynth";
+  import { chordAt, chordPulse, isSilence, uniqueChords } from "./lib/chordTimeline";
   import { formatTime } from "./lib/formatTime";
-  import type { ChordAnalysis, LibraryEntry, Track, YoutubeCandidate } from "./lib/types";
+  import type { ChordAnalysis, LibraryEntry, Track, ViewId, YoutubeCandidate } from "./lib/types";
 
   const player = new AudioPlayer();
+  /** Um sintetizador só, compartilhado pelas telas que tocam acordes. */
+  const synth = new ChordSynth();
+
+  let view = $state<ViewId>("player");
 
   let track = $state<Track | null>(null);
   let currentTime = $state(0);
@@ -40,6 +50,28 @@
   );
 
   const overview = $derived(analysis === null ? [] : uniqueChords(analysis.chords));
+
+  /** Cores da capa, carregadas uma vez e usadas pelo disco e pelo fundo. */
+  let discPalette = $state<DiscPalette | null>(null);
+  $effect(() => {
+    const url = track?.coverUrl ?? null;
+    if (url === null) {
+      discPalette = null;
+      return;
+    }
+    let current = true;
+    void loadDiscPalette(url).then((found) => {
+      if (current) discPalette = found;
+    });
+    return () => {
+      current = false;
+    };
+  });
+
+  // O fundo respira a cada troca de acorde.
+  const pulse = $derived(
+    playing ? chordPulse(currentTime, currentChord?.startSeconds ?? null) : 0,
+  );
 
   /** Segurar a faixa de acordes espera a música; soltar retoma se estava
    * tocando. Guardar o que era antes evita dar play em algo que estava pausado. */
@@ -193,6 +225,7 @@
   onDestroy(() => {
     stopWatching();
     player.destroy();
+    synth.dispose();
   });
 
   async function chooseFile() {
@@ -257,7 +290,16 @@
 
 <svelte:window onkeydown={onKeyDown} />
 
+<AmbientGlow palette={discPalette} {pulse} />
+
+<Sidebar current={view} onSelect={(chosen) => (view = chosen)} />
+
 <main>
+  {#if view === "scales"}
+    <ScalesView {synth} />
+  {:else if view === "progression"}
+    <ProgressionView {synth} />
+  {:else}
   <header>
     <h1>{track?.title ?? "Nenhuma música carregada"}</h1>
     <button onclick={chooseFile} disabled={loading}>
@@ -306,7 +348,7 @@
       <p class="pending">Analisando os acordes…</p>
     {:else if analysis}
       <section class="now">
-        <Vinyl coverUrl={track.coverUrl} {currentTime} />
+        <Vinyl coverUrl={track.coverUrl} {currentTime} palette={discPalette} />
 
         <div class="name" aria-live="polite">
           <strong>{isSilence(currentChord) ? "–" : currentChord?.label}</strong>
@@ -363,13 +405,15 @@
     onOpen={openEntry}
     onRemove={removeEntry}
   />
+  {/if}
 </main>
 
 <style>
   main {
     max-width: 58rem;
     margin: 0 auto;
-    padding: 2.5rem 2rem 3rem;
+    /* O topo abre espaço para o botão do menu, que flutua sobre a tela. */
+    padding: 4rem 2rem 3rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;

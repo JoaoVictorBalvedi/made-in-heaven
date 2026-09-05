@@ -75,8 +75,10 @@ não um corte de escopo:
 |---|---|---|---|---|
 | 1 | Tocar junto com uma música | Busco uma música pelo nome ou abro um arquivo do computador, dou play e vejo os acordes correndo na timeline em sincronia com o áudio. É a primeira versão utilizável de verdade. | complete | `.claude/plans/acordes-em-tempo-real.plan.md` |
 | 2 | Ver como formar o acorde | O acorde atual aparece desenhado no braço da guitarra, não só como nome. Fecha o laço para acordes que ainda não sei formar de cabeça. | complete | — |
-| 3 | Ter um repertório que persiste | O que eu importo ou baixo fica guardado. Abro o aplicativo e a música que estudei ontem está lá, sem baixar nem procurar o arquivo de novo. | in-progress | `.claude/plans/biblioteca.plan.md` |
-| 4 | Isolar instrumentos | Separo a música em stems e escuto só a guitarra para conferir o que estou tocando, ou tiro a guitarra para tocar por cima. | pending | — |
+| 3 | Ter um repertório que persiste | O que eu importo ou baixo fica guardado. Abro o aplicativo e a música que estudei ontem está lá, sem baixar nem procurar o arquivo de novo. | complete | `.claude/plans/biblioteca.plan.md` |
+| 4 | Estudar fora de uma música | Escalas no braço e um lugar para montar, ouvir e salvar progressões — estudar harmonia sem depender de uma gravação. | complete | — |
+| 5 | Abrir pelo ícone | O aplicativo instalado em /Applications, analisando acordes de verdade. | complete | — |
+| 6 | Isolar instrumentos | Separo a música em stems e escuto só a guitarra para conferir o que estou tocando, ou tiro a guitarra para tocar por cima. | pending | — |
 
 ## Open Questions
 - [ ] Qual a precisão aceitável na prática? Um acorde errado a cada seção atrapalha

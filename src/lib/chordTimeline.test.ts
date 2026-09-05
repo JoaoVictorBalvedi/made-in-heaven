@@ -9,6 +9,7 @@ import {
   timeFromClick,
   timeFromDrag,
   uniqueChords,
+  chordPulse,
 } from "./chordTimeline";
 import type { TimedChord } from "./types";
 
@@ -178,5 +179,37 @@ describe("uniqueChords", () => {
   it("lida com música sem acorde nenhum", () => {
     expect(uniqueChords([])).toEqual([]);
     expect(uniqueChords([chord("N", 0, 5)])).toEqual([]);
+  });
+});
+
+describe("chordPulse", () => {
+  it("acende no início do acorde", () => {
+    expect(chordPulse(10, 10)).toBe(1);
+  });
+
+  it("apaga ao longo do tempo", () => {
+    const early = chordPulse(10.2, 10);
+    const late = chordPulse(10.8, 10);
+    expect(early).toBeGreaterThan(late);
+    expect(late).toBeGreaterThan(0);
+  });
+
+  it("chega a zero depois do decaimento e lá permanece", () => {
+    expect(chordPulse(12, 10)).toBe(0);
+    expect(chordPulse(600, 10)).toBe(0);
+  });
+
+  it("não acende antes de o acorde começar", () => {
+    // Acontece ao arrastar a música para trás.
+    expect(chordPulse(9, 10)).toBe(0);
+  });
+
+  it("fica apagado em silêncio", () => {
+    expect(chordPulse(10, null)).toBe(0);
+  });
+
+  it("cai rápido no começo e alonga o rastro", () => {
+    // A curva ao quadrado perde mais da metade na primeira metade do tempo.
+    expect(chordPulse(10.55, 10, 1.1)).toBeLessThan(0.3);
   });
 });

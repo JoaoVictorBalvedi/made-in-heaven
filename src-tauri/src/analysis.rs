@@ -66,13 +66,13 @@ pub fn analyze_track(app: &AppHandle, audio_path: &Path) -> Result<ChordAnalysis
     if let Some(cached) = read_cache(app, &identity) {
         return Ok(cached);
     }
-    let analysis = run_worker(audio_path)?;
+    let analysis = run_worker(app, audio_path)?;
     write_cache(app, &identity, &analysis);
     Ok(analysis)
 }
 
-fn run_worker(audio_path: &Path) -> Result<ChordAnalysis, AppError> {
-    let worker = worker_path();
+fn run_worker(app: &AppHandle, audio_path: &Path) -> Result<ChordAnalysis, AppError> {
+    let worker = worker_path(app);
     let audio = audio_path.to_string_lossy().into_owned();
     let bounds = Bounds {
         stdout_bytes: MAX_STDOUT_BYTES,
@@ -132,24 +132,36 @@ fn validate(analysis: &ChordAnalysis) -> Result<(), AppError> {
     Ok(())
 }
 
-/// O worker é encontrado pelo ambiente em desenvolvimento e ao lado do
-/// executável quando empacotado.
-fn worker_path() -> PathBuf {
+/// Onde procurar o programa de análise, em ordem de prioridade.
+///
+/// O lançador empacotado é um script com shebang absoluto para o Python do
+/// ambiente virtual, que fica no repositório: o aplicativo depende de ele
+/// continuar existindo ali. É a escolha consciente de um aplicativo pessoal —
+/// embutir torch e os pesos do modelo custaria quase um gigabyte.
+fn worker_path(app: &AppHandle) -> PathBuf {
     if let Ok(override_path) = std::env::var("MUSICA_CHORD_WORKER") {
         return PathBuf::from(override_path);
     }
+
+    if let Ok(resource) = app.path().resource_dir().map(|dir| dir.join("chord-worker")) {
+        if resource.is_file() {
+            return resource;
+        }
+    }
+
     #[cfg(debug_assertions)]
     {
-        return PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let development = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../tools/chord-worker/.venv/bin/chord-worker");
+        if development.is_file() {
+            return development;
+        }
     }
-    #[cfg(not(debug_assertions))]
-    {
-        std::env::current_exe()
-            .ok()
-            .and_then(|exe| exe.parent().map(|dir| dir.join("chord-worker")))
-            .unwrap_or_else(|| PathBuf::from("chord-worker"))
-    }
+
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("chord-worker")))
+        .unwrap_or_else(|| PathBuf::from("chord-worker"))
 }
 
 /// Onde mora a análise de uma música. O repertório precisa disto para apagar

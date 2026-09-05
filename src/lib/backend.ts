@@ -8,7 +8,13 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 
-import type { ChordAnalysis, LibraryEntry, Track, YoutubeCandidate } from "./types";
+import type {
+  ChordAnalysis,
+  LibraryEntry,
+  SavedProgression,
+  Track,
+  YoutubeCandidate,
+} from "./types";
 
 const AUDIO_EXTENSIONS = ["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus"];
 
@@ -68,4 +74,21 @@ export function searchYoutube(query: string): Promise<YoutubeCandidate[]> {
 /** Traz um vídeo para o repertório. Se já estiver lá, nada é baixado. */
 export function importYoutube(videoId: string): Promise<LibraryEntry> {
   return invoke<LibraryEntry>("import_youtube", { videoId });
+}
+
+/** Todas as progressões salvas, da mais recente para a mais antiga. */
+export function progressionsList(): Promise<SavedProgression[]> {
+  return invoke<SavedProgression[]>("progressions_list");
+}
+
+/** Salva uma progressão. Um nome já usado é sobrescrito, em vez de duplicar. */
+export function progressionsSave(
+  name: string,
+  chords: readonly string[],
+): Promise<SavedProgression> {
+  return invoke<SavedProgression>("progressions_save", { name, chords });
+}
+
+export function progressionsRemove(id: string): Promise<void> {
+  return invoke<void>("progressions_remove", { id });
 }

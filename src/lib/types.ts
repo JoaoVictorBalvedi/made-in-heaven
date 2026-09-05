@@ -60,3 +60,15 @@ export interface LibraryEntry {
   /** Segundos desde a época. */
   readonly addedAt: number;
 }
+
+/** As telas do aplicativo. */
+export type ViewId = "player" | "scales" | "progression";
+
+/** Uma progressão salva pelo usuário. */
+export interface SavedProgression {
+  readonly id: string;
+  readonly name: string;
+  readonly chords: readonly string[];
+  /** Segundos desde a época. */
+  readonly savedAt: number;
+}

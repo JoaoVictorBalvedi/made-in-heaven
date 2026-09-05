@@ -100,6 +100,13 @@ export function paletteFromPixels(data: Uint8ClampedArray): DiscPalette | null {
   };
 }
 
+/** A cor do disco quando não há capa de onde tirá-la. */
+export const NEUTRAL_PALETTE: DiscPalette = {
+  sheen: "#3a3a44",
+  deep: "#08080a",
+  groove: "#6a6a78",
+};
+
 /** Amostra pequena: 48×48 já dá a cor dominante e custa quase nada. */
 const SAMPLE_SIZE = 48;
 

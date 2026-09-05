@@ -1,15 +1,24 @@
 <script lang="ts">
-  import { loadDiscPalette, type DiscPalette } from "./discPalette";
+  import { NEUTRAL_PALETTE, type DiscPalette } from "./discPalette";
 
   interface Props {
     /** Capa do álbum. Sem ela, o disco fica com o rótulo liso. */
     coverUrl?: string | null;
     /** Posição da música, em segundos. É o que gira o disco. */
     currentTime?: number;
+    /** Cores tiradas da capa. Sem elas, o disco fica neutro. */
+    palette?: DiscPalette | null;
     size?: number;
   }
 
-  const { coverUrl = null, currentTime = 0, size = 180 }: Props = $props();
+  const {
+    coverUrl = null,
+    currentTime = 0,
+    palette: given = null,
+    size = 180,
+  }: Props = $props();
+
+  const palette = $derived(given ?? NEUTRAL_PALETTE);
 
   /** 33⅓ rotações por minuto — a velocidade de um LP de verdade. */
   const SECONDS_PER_TURN = 60 / (100 / 3);
@@ -18,26 +27,6 @@
   // Assim, pausar congela, arrastar para trás gira ao contrário e a rotação
   // nunca sai de sincronia com o que se ouve — nada disso precisa de código.
   const rotation = $derived(((currentTime / SECONDS_PER_TURN) * 360) % 360);
-
-  /** Cor do disco quando não há capa de onde tirá-la. */
-  const NEUTRAL: DiscPalette = { sheen: "#3a3a44", deep: "#08080a", groove: "#6a6a78" };
-  let palette = $state<DiscPalette>(NEUTRAL);
-
-  // O vinil reflete a luz e o que está em volta; aqui, a própria capa.
-  $effect(() => {
-    const url = coverUrl;
-    if (url === null) {
-      palette = NEUTRAL;
-      return;
-    }
-    let current = true;
-    void loadDiscPalette(url).then((found) => {
-      if (current) palette = found ?? NEUTRAL;
-    });
-    return () => {
-      current = false;
-    };
-  });
 
   /** Raios dos sulcos, do bordo até o rótulo. Espaçamento irregular de
    * propósito: sulco perfeitamente uniforme lê como grade, não como vinil. */

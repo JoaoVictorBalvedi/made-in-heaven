@@ -7,6 +7,7 @@ mod analysis;
 mod error;
 mod library;
 mod process;
+mod progressions;
 mod youtube;
 
 use std::path::PathBuf;
@@ -14,6 +15,7 @@ use std::path::PathBuf;
 use analysis::ChordAnalysis;
 use error::AppError;
 use library::LibraryEntry;
+use progressions::SavedProgression;
 use youtube::YoutubeCandidate;
 
 /// Analisa os acordes de uma faixa. Reaproveita o resultado já guardado.
@@ -98,6 +100,27 @@ async fn library_remove(app: tauri::AppHandle, id: String) -> Result<(), AppErro
         .map_err(|error| AppError::Library(error.to_string()))?
 }
 
+/// Todas as progressões salvas.
+#[tauri::command]
+fn progressions_list(app: tauri::AppHandle) -> Vec<SavedProgression> {
+    progressions::list(&app)
+}
+
+/// Salva uma progressão com um nome. Nome repetido sobrescreve.
+#[tauri::command]
+fn progressions_save(
+    app: tauri::AppHandle,
+    name: String,
+    chords: Vec<String>,
+) -> Result<SavedProgression, AppError> {
+    progressions::save(&app, &name, chords)
+}
+
+#[tauri::command]
+fn progressions_remove(app: tauri::AppHandle, id: String) -> Result<(), AppError> {
+    progressions::remove(&app, &id)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -108,7 +131,10 @@ pub fn run() {
             library_list,
             library_repair,
             library_add_file,
-            library_remove
+            library_remove,
+            progressions_list,
+            progressions_save,
+            progressions_remove
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar a janela do aplicativo");

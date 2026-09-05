@@ -129,6 +129,8 @@ pub fn import(app: &AppHandle, video_id: &str) -> Result<LibraryEntry, AppError>
     }
 
     let tool = find_tool("yt-dlp")?;
+    let ffmpeg = ffmpeg_directory()?;
+    let ffmpeg = ffmpeg.to_string_lossy().into_owned();
     let directory = app
         .path()
         .app_data_dir()
@@ -144,6 +146,8 @@ pub fn import(app: &AppHandle, video_id: &str) -> Result<LibraryEntry, AppError>
         &tool,
         &[
             "--ignore-config",
+            "--ffmpeg-location",
+            &ffmpeg,
             "--no-playlist",
             "--no-progress",
             "--extract-audio",
@@ -251,6 +255,8 @@ pub fn fetch_thumbnail(app: &AppHandle, video_id: &str) -> Result<PathBuf, AppEr
         return Err(AppError::ImportFailed("identificador de vídeo inválido".into()));
     }
     let tool = find_tool("yt-dlp")?;
+    let ffmpeg = ffmpeg_directory()?;
+    let ffmpeg = ffmpeg.to_string_lossy().into_owned();
     let directory = app
         .path()
         .app_data_dir()
@@ -265,6 +271,8 @@ pub fn fetch_thumbnail(app: &AppHandle, video_id: &str) -> Result<PathBuf, AppEr
         &tool,
         &[
             "--ignore-config",
+            "--ffmpeg-location",
+            &ffmpeg,
             "--skip-download",
             "--write-thumbnail",
             "--convert-thumbnail",
@@ -297,6 +305,20 @@ fn is_video_id(candidate: &str) -> bool {
         && candidate
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || character == '-' || character == '_')
+}
+
+/// O diretório onde moram `ffmpeg` e `ffprobe`.
+///
+/// O yt-dlp precisa dos dois para extrair áudio e converter a miniatura, e os
+/// procura no PATH que herdou de nós. Dizer onde estão é o que faz a
+/// importação funcionar num aplicativo aberto pelo Finder, cujo ambiente não
+/// tem os diretórios que o shell do usuário configura.
+fn ffmpeg_directory() -> Result<PathBuf, AppError> {
+    let binary = find_tool("ffmpeg")?;
+    binary
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| AppError::ToolMissing("ffmpeg".into()))
 }
 
 /// Localiza uma ferramenta externa.

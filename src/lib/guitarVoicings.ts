@@ -17,6 +17,9 @@ export interface Voicing {
   /** Primeira casa mostrada no diagrama; acima de 1 em formas com pestana alta. */
   readonly baseFret: number;
   readonly barres: readonly number[];
+  /** As notas que realmente soam, em MIDI. Vem do banco: as casas sozinhas não
+   * bastam, porque cordas abafadas não soam e a pestana desloca tudo. */
+  readonly midi: readonly number[];
 }
 
 /** Quão fiel ao rótulo é a forma encontrada. */
