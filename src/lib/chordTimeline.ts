@@ -61,3 +61,55 @@ export function scrollOffset(
 export function isSilence(chord: TimedChord | null): boolean {
   return chord === null || chord.label === "N";
 }
+
+/** O instante para onde arrastar leva, a partir de onde o arrasto começou.
+ *
+ * O cálculo parte do tempo inicial e do deslocamento em pixels, nunca do tempo
+ * atual: usar o tempo atual realimentaria o próprio arrasto, já que mover a
+ * faixa muda o que está sob o cursor.
+ */
+export function timeFromDrag(
+  startTime: number,
+  deltaX: number,
+  pixelsPerSecond: number,
+): number {
+  // Arrastar a faixa para a esquerda avança a música, como empurrar a fita.
+  return Math.max(0, startTime - deltaX / pixelsPerSecond);
+}
+
+/** O instante correspondente a um ponto da faixa, para um clique simples. */
+export function timeFromClick(
+  currentTime: number,
+  x: number,
+  playheadOffset: number,
+  pixelsPerSecond: number,
+): number {
+  return Math.max(0, currentTime + (x - playheadOffset) / pixelsPerSecond);
+}
+
+/** Um acorde distinto da música, com quantas vezes aparece. */
+export interface ChordSummary {
+  readonly label: string;
+  readonly occurrences: number;
+  /** Segundo em que soa pela primeira vez. Serve para pular até ele. */
+  readonly firstSeconds: number;
+}
+
+/** Os acordes distintos da música, na ordem em que aparecem pela primeira vez.
+ *
+ * Ordem de aparição, e não frequência: é assim que a pessoa encontra o acorde
+ * que ouviu, e é a ordem em que ela vai precisar aprendê-los.
+ */
+export function uniqueChords(chords: readonly TimedChord[]): readonly ChordSummary[] {
+  const seen = new Map<string, { occurrences: number; firstSeconds: number }>();
+  for (const chord of chords) {
+    if (isSilence(chord)) continue;
+    const existing = seen.get(chord.label);
+    if (existing === undefined) {
+      seen.set(chord.label, { occurrences: 1, firstSeconds: chord.startSeconds });
+    } else {
+      existing.occurrences += 1;
+    }
+  }
+  return [...seen].map(([label, data]) => ({ label, ...data }));
+}

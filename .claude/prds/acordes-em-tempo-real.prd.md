@@ -53,6 +53,7 @@ não um corte de escopo:
 - Diagrama visual do acorde no braço da guitarra
 - Importação de arquivo local de áudio
 - Busca e importação a partir do YouTube, pelo nome da música
+- Repertório persistente: o que entrou fica guardado e é reaberto sem reimportar
 - Separação da música em stems, com controle de volume por instrumento
 
 **Out of scope**
@@ -72,9 +73,10 @@ não um corte de escopo:
 
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
-| 1 | Tocar junto com uma música | Busco uma música pelo nome ou abro um arquivo do computador, dou play e vejo os acordes correndo na timeline em sincronia com o áudio. É a primeira versão utilizável de verdade. | in-progress | `.claude/plans/acordes-em-tempo-real.plan.md` |
-| 2 | Ver como formar o acorde | O acorde atual aparece desenhado no braço da guitarra, não só como nome. Fecha o laço para acordes que ainda não sei formar de cabeça. | pending | — |
-| 3 | Isolar instrumentos | Separo a música em stems e escuto só a guitarra para conferir o que estou tocando, ou tiro a guitarra para tocar por cima. | pending | — |
+| 1 | Tocar junto com uma música | Busco uma música pelo nome ou abro um arquivo do computador, dou play e vejo os acordes correndo na timeline em sincronia com o áudio. É a primeira versão utilizável de verdade. | complete | `.claude/plans/acordes-em-tempo-real.plan.md` |
+| 2 | Ver como formar o acorde | O acorde atual aparece desenhado no braço da guitarra, não só como nome. Fecha o laço para acordes que ainda não sei formar de cabeça. | complete | — |
+| 3 | Ter um repertório que persiste | O que eu importo ou baixo fica guardado. Abro o aplicativo e a música que estudei ontem está lá, sem baixar nem procurar o arquivo de novo. | in-progress | `.claude/plans/biblioteca.plan.md` |
+| 4 | Isolar instrumentos | Separo a música em stems e escuto só a guitarra para conferir o que estou tocando, ou tiro a guitarra para tocar por cima. | pending | — |
 
 ## Open Questions
 - [ ] Qual a precisão aceitável na prática? Um acorde errado a cada seção atrapalha

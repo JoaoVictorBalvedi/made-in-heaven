@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { chordsInWindow, isSilence, scrollOffset } from "./chordTimeline";
+  import { chordsInWindow, isSilence, scrollOffset, timeFromClick, timeFromDrag } from "./chordTimeline";
   import type { TimedChord } from "./types";
 
   interface Props {
@@ -8,9 +8,19 @@
     /** Escala da faixa. Mais pixels por segundo, mais espaçados os acordes. */
     pixelsPerSecond?: number;
     onSeek?: (seconds: number) => void;
+    /** Avisa que o usuário pegou a faixa, para a música poder esperar. */
+    onScrubStart?: () => void;
+    onScrubEnd?: () => void;
   }
 
-  const { chords, currentTime, pixelsPerSecond = 90, onSeek }: Props = $props();
+  const {
+    chords,
+    currentTime,
+    pixelsPerSecond = 90,
+    onSeek,
+    onScrubStart,
+    onScrubEnd,
+  }: Props = $props();
 
   /** Fração da largura em que o marcador fica. Deixa espaço à esquerda para o
    * acorde que acabou de passar, e a maior parte à direita para o que vem. */
@@ -19,6 +29,10 @@
   const SECONDS_AHEAD = 16;
 
   let width = $state(0);
+  let dragging = $state(false);
+  /** Estado do arrasto: onde começou, e em que instante da música. */
+  let dragStart: { x: number; time: number } | null = null;
+  let moved = false;
 
   const playheadOffset = $derived(width * PLAYHEAD_RATIO);
   const offset = $derived(scrollOffset(currentTime, pixelsPerSecond, playheadOffset));
@@ -26,19 +40,52 @@
     chordsInWindow(chords, currentTime - SECONDS_BEHIND, currentTime + SECONDS_AHEAD),
   );
 
-  function seekFromClick(event: MouseEvent) {
+  /** Abaixo disto o gesto ainda é um clique, não um arrasto. */
+  const DRAG_THRESHOLD_PX = 3;
+
+  function onPointerDown(event: PointerEvent) {
     if (onSeek === undefined) return;
-    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    onSeek((x - playheadOffset) / pixelsPerSecond + currentTime);
+    const element = event.currentTarget as HTMLElement;
+    element.setPointerCapture(event.pointerId);
+    dragStart = { x: event.clientX, time: currentTime };
+    moved = false;
+    dragging = true;
+    onScrubStart?.();
+  }
+
+  function onPointerMove(event: PointerEvent) {
+    if (dragStart === null || onSeek === undefined) return;
+    const deltaX = event.clientX - dragStart.x;
+    if (!moved && Math.abs(deltaX) < DRAG_THRESHOLD_PX) return;
+    moved = true;
+    onSeek(timeFromDrag(dragStart.time, deltaX, pixelsPerSecond));
+  }
+
+  function onPointerUp(event: PointerEvent) {
+    if (dragStart === null || onSeek === undefined) {
+      dragging = false;
+      onScrubEnd?.();
+      return;
+    }
+    // Sem movimento, o gesto foi um clique: pula para o ponto apontado.
+    if (!moved) {
+      const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      onSeek(timeFromClick(dragStart.time, event.clientX - bounds.left, playheadOffset, pixelsPerSecond));
+    }
+    dragStart = null;
+    dragging = false;
+    onScrubEnd?.();
   }
 </script>
 
 <div
   class="timeline"
+  class:dragging
   bind:clientWidth={width}
-  onclick={seekFromClick}
-  onkeydown={undefined}
+  onpointerdown={onPointerDown}
+  onpointermove={onPointerMove}
+  onpointerup={onPointerUp}
+  onpointercancel={onPointerUp}
   role="presentation"
 >
   <div class="track" style:transform="translateX({offset}px)">
@@ -66,8 +113,12 @@
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 16px;
-    cursor: pointer;
+    cursor: grab;
+    /* Sem isto, arrastar sobre a faixa seleciona texto em vez de mover. */
+    touch-action: none;
   }
+
+  .timeline.dragging { cursor: grabbing; }
 
   .track {
     position: absolute;

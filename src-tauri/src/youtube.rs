@@ -14,6 +14,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     error::AppError,
+    library::{self, LibraryEntry},
     process::{run_bounded, Bounds},
 };
 
@@ -117,10 +118,14 @@ fn parse_candidate(line: &str) -> Option<YoutubeCandidate> {
     })
 }
 
-/// Baixa o áudio de um vídeo e devolve o caminho local do arquivo.
-pub fn import(app: &AppHandle, video_id: &str) -> Result<String, AppError> {
+/// Traz um vídeo para o repertório. Se ele já estiver lá, nada é baixado.
+pub fn import(app: &AppHandle, video_id: &str) -> Result<LibraryEntry, AppError> {
     if !is_video_id(video_id) {
         return Err(AppError::ImportFailed("identificador de vídeo inválido".into()));
+    }
+    // A rede só é tocada se o vídeo ainda não estiver guardado.
+    if let Some(existing) = library::find_by_video(app, video_id) {
+        return Ok(existing);
     }
 
     let tool = find_tool("yt-dlp")?;
@@ -128,7 +133,7 @@ pub fn import(app: &AppHandle, video_id: &str) -> Result<String, AppError> {
         .path()
         .app_data_dir()
         .map_err(|error| AppError::ImportFailed(error.to_string()))?
-        .join("imports");
+        .join("downloads");
     std::fs::create_dir_all(&directory).map_err(|error| AppError::ImportFailed(error.to_string()))?;
 
     let template = directory.join("%(id)s.%(ext)s");
@@ -146,10 +151,17 @@ pub fn import(app: &AppHandle, video_id: &str) -> Result<String, AppError> {
             "mp3",
             "--audio-quality",
             "0",
+            // A miniatura vira o rótulo do disco na tela. Salva como arquivo
+            // ao lado do áudio para o repertório não depender da rede depois.
+            "--write-thumbnail",
+            "--convert-thumbnail",
+            "jpg",
             "--output",
             &template,
-            // Imprime o caminho final depois de mover o arquivo: é assim que
-            // descobrimos o nome real sem adivinhar a extensão.
+            // O título vem primeiro; o caminho final, depois de mover o arquivo.
+            // A ordem é o que permite ler os dois sem ambiguidade.
+            "--print",
+            "title",
             "--print",
             "after_move:filepath",
             "--",
@@ -166,13 +178,116 @@ pub fn import(app: &AppHandle, video_id: &str) -> Result<String, AppError> {
         return Err(AppError::ImportFailed(explain(&captured.stderr)));
     }
 
-    let path = String::from_utf8_lossy(&captured.stdout).trim().to_string();
+    let output = String::from_utf8_lossy(&captured.stdout);
+    let (title, path) = split_title_and_path(&output);
     if path.is_empty() || !Path::new(&path).is_file() {
         return Err(AppError::ImportFailed(
             "o download terminou sem deixar um arquivo utilizável".into(),
         ));
     }
-    Ok(path)
+    // O yt-dlp grava a miniatura com o mesmo nome do áudio.
+    let thumbnail = directory.join(format!("{video_id}.jpg"));
+    let content_id = library::content_id(Path::new(&path))?;
+    let cover = thumbnail
+        .is_file()
+        .then(|| library::adopt_cover(app, &thumbnail, &content_id))
+        .flatten();
+
+    library::adopt_file(
+        app,
+        Path::new(&path),
+        &title,
+        "youtube",
+        Some(video_id.to_string()),
+        true,
+        cover,
+    )
+}
+
+/// O caminho é sempre a última linha; o que vier antes é o título, que pode
+/// conter quebra de linha sem estragar a leitura.
+fn split_title_and_path(output: &str) -> (String, String) {
+    let lines: Vec<&str> = output.lines().filter(|line| !line.trim().is_empty()).collect();
+    let Some((path, title_lines)) = lines.split_last() else {
+        return (String::new(), String::new());
+    };
+    (title_lines.join(" ").trim().to_string(), path.trim().to_string())
+}
+
+/// Busca só o título de um vídeo, sem baixar nada.
+///
+/// Serve para consertar entradas antigas do repertório, adotadas antes de o
+/// título passar a ser guardado no momento do download.
+pub fn fetch_title(video_id: &str) -> Result<String, AppError> {
+    if !is_video_id(video_id) {
+        return Err(AppError::ImportFailed("identificador de vídeo inválido".into()));
+    }
+    let tool = find_tool("yt-dlp")?;
+    let url = format!("https://www.youtube.com/watch?v={video_id}");
+    let captured = run_bounded(
+        &tool,
+        &["--ignore-config", "--skip-download", "--print", "title", "--", &url],
+        &Bounds {
+            stdout_bytes: MAX_IMPORT_STDOUT,
+            stderr_bytes: MAX_STDERR,
+            timeout: SEARCH_TIMEOUT,
+        },
+    )?;
+    if !captured.success {
+        return Err(AppError::ImportFailed(explain(&captured.stderr)));
+    }
+    let title = String::from_utf8_lossy(&captured.stdout).trim().to_string();
+    if title.is_empty() {
+        return Err(AppError::ImportFailed("o vídeo não informou um título".into()));
+    }
+    Ok(title)
+}
+
+/// Baixa só a miniatura de um vídeo, sem o áudio.
+///
+/// Serve para dar capa a entradas trazidas antes de a miniatura ser guardada.
+pub fn fetch_thumbnail(app: &AppHandle, video_id: &str) -> Result<PathBuf, AppError> {
+    if !is_video_id(video_id) {
+        return Err(AppError::ImportFailed("identificador de vídeo inválido".into()));
+    }
+    let tool = find_tool("yt-dlp")?;
+    let directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| AppError::ImportFailed(error.to_string()))?
+        .join("downloads");
+    std::fs::create_dir_all(&directory).map_err(|error| AppError::ImportFailed(error.to_string()))?;
+
+    let template = directory.join("%(id)s.%(ext)s");
+    let template = template.to_string_lossy().into_owned();
+    let url = format!("https://www.youtube.com/watch?v={video_id}");
+    let captured = run_bounded(
+        &tool,
+        &[
+            "--ignore-config",
+            "--skip-download",
+            "--write-thumbnail",
+            "--convert-thumbnail",
+            "jpg",
+            "--output",
+            &template,
+            "--",
+            &url,
+        ],
+        &Bounds {
+            stdout_bytes: MAX_IMPORT_STDOUT,
+            stderr_bytes: MAX_STDERR,
+            timeout: SEARCH_TIMEOUT,
+        },
+    )?;
+    if !captured.success {
+        return Err(AppError::ImportFailed(explain(&captured.stderr)));
+    }
+    let thumbnail = directory.join(format!("{video_id}.jpg"));
+    if !thumbnail.is_file() {
+        return Err(AppError::ImportFailed("o vídeo não trouxe miniatura".into()));
+    }
+    Ok(thumbnail)
 }
 
 /// Identificadores do YouTube têm 11 caracteres de um alfabeto restrito. Checar
@@ -273,6 +388,26 @@ mod tests {
         let candidate = parse_candidate(line).expect("linha válida");
         assert_eq!(candidate.channel, "alguém");
         assert_eq!(candidate.duration_seconds, Some(12.5));
+    }
+
+    #[test]
+    fn separa_titulo_e_caminho() {
+        let (title, path) = split_title_and_path("Minha Música\n/tmp/abc.mp3\n");
+        assert_eq!(title, "Minha Música");
+        assert_eq!(path, "/tmp/abc.mp3");
+    }
+
+    #[test]
+    fn titulo_com_quebra_de_linha_nao_engole_o_caminho() {
+        // O caminho é a última linha; o resto, por mais linhas que tenha, é título.
+        let (title, path) = split_title_and_path("Parte um\nParte dois\n/tmp/abc.mp3");
+        assert_eq!(title, "Parte um Parte dois");
+        assert_eq!(path, "/tmp/abc.mp3");
+    }
+
+    #[test]
+    fn saida_vazia_nao_quebra() {
+        assert_eq!(split_title_and_path(""), (String::new(), String::new()));
     }
 
     #[test]

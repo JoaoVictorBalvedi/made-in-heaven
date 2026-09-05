@@ -10,7 +10,6 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -63,7 +62,7 @@ struct CacheEntry {
 
 /// Analisa uma faixa, reaproveitando o resultado guardado quando existir.
 pub fn analyze_track(app: &AppHandle, audio_path: &Path) -> Result<ChordAnalysis, AppError> {
-    let identity = file_identity(audio_path)?;
+    let identity = crate::library::content_id(audio_path)?;
     if let Some(cached) = read_cache(app, &identity) {
         return Ok(cached);
     }
@@ -153,27 +152,9 @@ fn worker_path() -> PathBuf {
     }
 }
 
-/// Identidade pelo conteúdo: renomear ou mover o arquivo não reprocessa.
-fn file_identity(audio_path: &Path) -> Result<String, AppError> {
-    use std::io::Read;
-
-    let mut file = std::fs::File::open(audio_path)
-        .map_err(|error| AppError::AudioUnreadable(error.to_string()))?;
-    let mut hasher = Sha256::new();
-    let mut buffer = vec![0_u8; 1024 * 1024];
-    loop {
-        let read = file
-            .read(&mut buffer)
-            .map_err(|error| AppError::AudioUnreadable(error.to_string()))?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..read]);
-    }
-    Ok(format!("{:x}", hasher.finalize()))
-}
-
-fn cache_path(app: &AppHandle, identity: &str) -> Result<PathBuf, AppError> {
+/// Onde mora a análise de uma música. O repertório precisa disto para apagar
+/// tudo que leva a mesma chave.
+pub fn cache_file(app: &AppHandle, identity: &str) -> Result<PathBuf, AppError> {
     let directory = app
         .path()
         .app_data_dir()
@@ -186,7 +167,7 @@ fn cache_path(app: &AppHandle, identity: &str) -> Result<PathBuf, AppError> {
 /// Cache ilegível ou de versão antiga é simplesmente ignorado: reanalisar é
 /// sempre seguro, então uma falha aqui nunca vira erro para o usuário.
 fn read_cache(app: &AppHandle, identity: &str) -> Option<ChordAnalysis> {
-    let path = cache_path(app, identity).ok()?;
+    let path = cache_file(app, identity).ok()?;
     let raw = std::fs::read(path).ok()?;
     let entry: CacheEntry = serde_json::from_slice(&raw).ok()?;
     (entry.version == CACHE_VERSION).then_some(entry.analysis)
@@ -194,7 +175,7 @@ fn read_cache(app: &AppHandle, identity: &str) -> Option<ChordAnalysis> {
 
 fn write_cache(app: &AppHandle, identity: &str, analysis: &ChordAnalysis) {
     let entry = CacheEntry { version: CACHE_VERSION, analysis: analysis.clone() };
-    let Ok(path) = cache_path(app, identity) else { return };
+    let Ok(path) = cache_file(app, identity) else { return };
     let Ok(serialized) = serde_json::to_vec(&entry) else { return };
     if let Err(error) = std::fs::write(&path, serialized) {
         tracing_write_failure(&path, &error);

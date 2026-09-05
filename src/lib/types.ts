@@ -34,6 +34,8 @@ export interface Track {
   readonly title: string;
   /** URL que o webview consegue carregar para reproduzir o arquivo. */
   readonly mediaUrl: string;
+  /** Capa do álbum, quando existe. Vira o rótulo do disco. */
+  readonly coverUrl: string | null;
 }
 
 /** Um resultado de busca do YouTube. Nada foi baixado ainda. */
@@ -44,4 +46,17 @@ export interface YoutubeCandidate {
   /** Ausente em transmissões ao vivo e afins. */
   readonly durationSeconds: number | null;
   readonly thumbnail: string | null;
+}
+
+/** Uma música guardada no repertório, dentro da pasta de dados do aplicativo. */
+export interface LibraryEntry {
+  /** SHA-256 do conteúdo. A mesma chave que indexa a análise de acordes. */
+  readonly id: string;
+  readonly title: string;
+  readonly source: "file" | "youtube";
+  readonly videoId: string | null;
+  readonly path: string;
+  readonly coverPath: string | null;
+  /** Segundos desde a época. */
+  readonly addedAt: number;
 }

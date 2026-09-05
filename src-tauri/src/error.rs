@@ -34,6 +34,9 @@ pub enum AppError {
 
     #[error("não consegui importar deste endereço: {0}")]
     ImportFailed(String),
+
+    #[error("falha ao usar o repertório: {0}")]
+    Library(String),
 }
 
 /// A interface recebe a mensagem já pronta, não a estrutura do erro.

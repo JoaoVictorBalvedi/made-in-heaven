@@ -1,16 +1,28 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
 
+  import ChordOverview from "./lib/ChordOverview.svelte";
   import ChordTimeline from "./lib/ChordTimeline.svelte";
   import FretboardChord from "./lib/FretboardChord.svelte";
+  import Library from "./lib/Library.svelte";
+  import Vinyl from "./lib/Vinyl.svelte";
   import SearchResults from "./lib/SearchResults.svelte";
-  import { analyzeTrack, importYoutube, pickAudioFile, searchYoutube } from "./lib/backend";
+  import {
+    analyzeTrack,
+    importYoutube,
+    libraryList,
+    libraryRemove,
+    libraryRepair,
+    pickAudioFile,
+    searchYoutube,
+    trackFromEntry,
+  } from "./lib/backend";
   import { findVoicings } from "./lib/guitarVoicings";
   import { LatestRequest } from "./lib/latestRequest";
   import { AudioPlayer } from "./lib/audioPlayer";
-  import { chordAt, isSilence } from "./lib/chordTimeline";
+  import { chordAt, isSilence, uniqueChords } from "./lib/chordTimeline";
   import { formatTime } from "./lib/formatTime";
-  import type { ChordAnalysis, Track, YoutubeCandidate } from "./lib/types";
+  import type { ChordAnalysis, LibraryEntry, Track, YoutubeCandidate } from "./lib/types";
 
   const player = new AudioPlayer();
 
@@ -27,6 +39,28 @@
     analysis === null ? null : chordAt(analysis.chords, currentTime),
   );
 
+  const overview = $derived(analysis === null ? [] : uniqueChords(analysis.chords));
+
+  /** Segurar a faixa de acordes espera a música; soltar retoma se estava
+   * tocando. Guardar o que era antes evita dar play em algo que estava pausado. */
+  let resumeAfterScrub = false;
+
+  function beginScrub() {
+    resumeAfterScrub = player.playing;
+    if (player.playing) player.pause();
+  }
+
+  async function endScrub() {
+    if (!resumeAfterScrub) return;
+    resumeAfterScrub = false;
+    try {
+      await player.play();
+      playing = player.playing;
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
   const voicingResult = $derived(
     currentChord === null || isSilence(currentChord) ? null : findVoicings(currentChord.label),
   );
@@ -39,6 +73,57 @@
   });
   const voicing = $derived(voicingResult?.voicings[positionIndex] ?? null);
   const positionCount = $derived(voicingResult?.voicings.length ?? 0);
+
+  let library = $state<LibraryEntry[]>([]);
+  let currentId = $state<string | null>(null);
+
+  async function refreshLibrary() {
+    try {
+      library = await libraryList();
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+
+  /** Mostra o repertório imediatamente e só depois vai à rede pelos títulos e
+   * capas que faltam. Sem isso, uma rede lenta atrasaria a abertura. */
+  async function loadLibrary() {
+    await refreshLibrary();
+    try {
+      library = await libraryRepair();
+    } catch {
+      // Sem rede o repertório continua utilizável; a próxima abertura tenta de novo.
+    }
+  }
+  void loadLibrary();
+
+  async function openEntry(entry: LibraryEntry) {
+    error = null;
+    loading = true;
+    try {
+      await loadTrack(trackFromEntry(entry));
+      currentId = entry.id;
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function removeEntry(entry: LibraryEntry) {
+    try {
+      await libraryRemove(entry.id);
+      if (currentId === entry.id) {
+        player.pause();
+        track = null;
+        analysis = null;
+        currentId = null;
+      }
+      await refreshLibrary();
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
 
   let query = $state("");
   let results = $state<YoutubeCandidate[]>([]);
@@ -81,7 +166,8 @@
     error = null;
     importingId = candidate.id;
     try {
-      await loadTrack(await importYoutube(candidate.id));
+      await openEntry(await importYoutube(candidate.id));
+      await refreshLibrary();
       results = [];
       query = "";
     } catch (cause) {
@@ -112,15 +198,13 @@
   async function chooseFile() {
     error = null;
     try {
-      const chosen = await pickAudioFile();
-      if (chosen === null) return;
-      loading = true;
-      await loadTrack(chosen);
+      const entry = await pickAudioFile();
+      if (entry === null) return;
+      await openEntry(entry);
+      await refreshLibrary();
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);
       track = null;
-    } finally {
-      loading = false;
     }
   }
 
@@ -151,7 +235,27 @@
   function scrub(event: Event) {
     player.seek(Number((event.currentTarget as HTMLInputElement).value));
   }
+
+  /** O usuário está digitando? A barra de espaço pertence ao campo, então. */
+  function isTyping(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target.isContentEditable
+    );
+  }
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.code !== "Space" || track === null) return;
+    if (isTyping(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+    // Sem isto o espaço rolaria a página e ainda acionaria o botão em foco.
+    event.preventDefault();
+    void toggle();
+  }
 </script>
+
+<svelte:window onkeydown={onKeyDown} />
 
 <main>
   <header>
@@ -201,8 +305,10 @@
     {#if analyzing}
       <p class="pending">Analisando os acordes…</p>
     {:else if analysis}
-      <section class="now" aria-live="polite">
-        <div class="name">
+      <section class="now">
+        <Vinyl coverUrl={track.coverUrl} {currentTime} />
+
+        <div class="name" aria-live="polite">
           <strong>{isSilence(currentChord) ? "–" : currentChord?.label}</strong>
           {#if voicingResult?.fidelity === "bassDropped"}
             <small>forma sem o baixo invertido</small>
@@ -234,14 +340,29 @@
         chords={analysis.chords}
         {currentTime}
         onSeek={(seconds) => player.seek(seconds)}
+        onScrubStart={beginScrub}
+        onScrubEnd={endScrub}
       />
       {#each analysis.warnings as warning}
         <p class="pending">{warning}</p>
       {/each}
+
+      {#if overview.length > 0}
+        <ChordOverview
+          chords={overview}
+          currentLabel={currentChord?.label ?? null}
+          onJump={(seconds) => player.seek(seconds)}
+        />
+      {/if}
     {/if}
-  {:else if !loading}
-    <p class="pending">Abra um arquivo de áudio para começar.</p>
   {/if}
+
+  <Library
+    entries={library}
+    {currentId}
+    onOpen={openEntry}
+    onRemove={removeEntry}
+  />
 </main>
 
 <style>
@@ -325,8 +446,7 @@
   .now {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
+    gap: 2.5rem;
     padding: 2rem 2.5rem;
     background: var(--surface);
     border: 1px solid var(--line);
@@ -338,6 +458,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
+    /* O nome ocupa o meio e empurra o braço para a direita. */
+    flex: 1;
   }
 
   .name strong {

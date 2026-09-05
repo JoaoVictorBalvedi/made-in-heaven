@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { chordAt, chordIndexAt, chordsInWindow, isSilence, scrollOffset } from "./chordTimeline";
+import {
+  chordAt,
+  chordIndexAt,
+  chordsInWindow,
+  isSilence,
+  scrollOffset,
+  timeFromClick,
+  timeFromDrag,
+  uniqueChords,
+} from "./chordTimeline";
 import type { TimedChord } from "./types";
 
 function chord(label: string, startSeconds: number, endSeconds: number): TimedChord {
@@ -96,5 +105,78 @@ describe("isSilence", () => {
     expect(isSilence(null)).toBe(true);
     expect(isSilence(chord("N", 0, 1))).toBe(true);
     expect(isSilence(chord("Am", 0, 1))).toBe(false);
+  });
+});
+
+describe("timeFromDrag", () => {
+  it("arrastar para a esquerda avança a música", () => {
+    expect(timeFromDrag(10, -90, 90)).toBe(11);
+  });
+
+  it("arrastar para a direita volta", () => {
+    expect(timeFromDrag(10, 180, 90)).toBe(8);
+  });
+
+  it("não passa do começo da música", () => {
+    expect(timeFromDrag(1, 900, 90)).toBe(0);
+  });
+
+  it("parte sempre do tempo inicial, não do acumulado", () => {
+    // Dois movimentos a partir do mesmo início dão o mesmo resultado que um
+    // salto direto: é o que impede o arrasto de realimentar a si mesmo.
+    expect(timeFromDrag(30, -45, 90)).toBe(timeFromDrag(30, -45, 90));
+    expect(timeFromDrag(30, -90, 90)).toBe(31);
+  });
+});
+
+describe("timeFromClick", () => {
+  it("clicar no marcador não muda nada", () => {
+    expect(timeFromClick(20, 200, 200, 90)).toBe(20);
+  });
+
+  it("clicar à direita do marcador avança", () => {
+    expect(timeFromClick(20, 290, 200, 90)).toBe(21);
+  });
+
+  it("clicar à esquerda volta, sem passar do começo", () => {
+    expect(timeFromClick(20, 110, 200, 90)).toBe(19);
+    expect(timeFromClick(0.5, 0, 200, 90)).toBe(0);
+  });
+});
+
+describe("uniqueChords", () => {
+  const sequence = [
+    chord("Am", 0, 2),
+    chord("N", 2, 3),
+    chord("C", 3, 5),
+    chord("Am", 5, 7),
+    chord("G", 7, 9),
+    chord("C", 9, 11),
+  ];
+
+  it("lista cada acorde uma vez, na ordem de aparição", () => {
+    expect(uniqueChords(sequence).map((entry) => entry.label)).toEqual(["Am", "C", "G"]);
+  });
+
+  it("conta quantas vezes cada um aparece", () => {
+    const counts = Object.fromEntries(
+      uniqueChords(sequence).map((entry) => [entry.label, entry.occurrences]),
+    );
+    expect(counts).toEqual({ Am: 2, C: 2, G: 1 });
+  });
+
+  it("guarda o instante da primeira aparição, não da última", () => {
+    const [first] = uniqueChords(sequence);
+    expect(first?.firstSeconds).toBe(0);
+    expect(uniqueChords(sequence)[1]?.firstSeconds).toBe(3);
+  });
+
+  it("descarta os trechos sem acorde", () => {
+    expect(uniqueChords(sequence).some((entry) => entry.label === "N")).toBe(false);
+  });
+
+  it("lida com música sem acorde nenhum", () => {
+    expect(uniqueChords([])).toEqual([]);
+    expect(uniqueChords([chord("N", 0, 5)])).toEqual([]);
   });
 });
