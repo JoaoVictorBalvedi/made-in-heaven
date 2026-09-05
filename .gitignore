@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+target/
+.svelte-kit/
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Arquivos de música usados em teste ficam fora do versionamento.
+*.mp3
+*.flac
+*.wav
+*.m4a
+
+.DS_Store
+*.egg-info/

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chord-worker"
+version = "0.1.0"
+description = "Worker de detecção de acordes com timestamps, via LV-Chordia"
+requires-python = "==3.13.*"
+dependencies = [
+  # pydub ainda importa audioop, que saiu da biblioteca padrão no 3.13.
+  "audioop-lts==0.2.2",
+  # O PyPI 1.1.0 é anterior ao ensemble reutilizável e às correções de MPS.
+  # Fixado na revisão auditada, nunca seguindo main.
+  "lv-chordia @ git+https://github.com/openmirlab/lv-chordia.git@9d7de7bbf45efa6731ec8dc62d35280f141c0702",
+  "numpy==2.3.5",
+]
+
+[project.scripts]
+chord-worker = "chord_worker.worker:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[dependency-groups]
+dev = ["pytest==8.4.2"]
