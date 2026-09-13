@@ -1,62 +1,139 @@
-# Musica
+<p align="center">
+  <img src="docs/screenshots/icon.png" width="96" alt="Musica icon" />
+</p>
 
-Aplicativo desktop para estudar música na guitarra. Roda no macOS e no Windows,
-sem servidor e sem navegador: toda a análise acontece na própria máquina.
+<h1 align="center">Musica</h1>
 
-## O que faz
+<p align="center">
+  A native desktop app that listens to a song and shows you the chords —
+  live, on a guitar neck, with nothing sent to a server.
+</p>
 
-**Tocar junto** — busque uma música pelo nome no YouTube ou abra um arquivo do
-computador. Os acordes são detectados localmente e correm numa timeline
-sincronizada com o som, com o desenho de cada um no braço da guitarra. O que
-entra fica guardado no repertório e reabre sem reimportar.
+<p align="center">
+  <a href="https://joaovictorbalvedi.github.io/made-in-heaven/"><strong>Landing page »</strong></a>
+</p>
 
-**Escalas** — as escalas principais em qualquer tônica, no braço inteiro. Dá
-para escolher a escala diretamente ou escolher um tom e ver tudo que serve
-sobre ele: os sete modos, as pentatônicas e o blues.
+<p align="center">
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f2f0ec.svg?style=flat-square">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-f2f0ec.svg?style=flat-square">
+  <img alt="Svelte 5" src="https://img.shields.io/badge/svelte-5-f2f0ec.svg?style=flat-square">
+  <img alt="Tauri 2" src="https://img.shields.io/badge/tauri-2-f2f0ec.svg?style=flat-square">
+  <img alt="Rust" src="https://img.shields.io/badge/rust-backend-f2f0ec.svg?style=flat-square">
+</p>
 
-**Progressões** — monte sequências de acordes ouvindo cada um entrar. O
-aplicativo deduz a tonalidade do que você montou e sugere o que costuma vir
-depois, com o motivo. Doze padrões conhecidos podem ser carregados em qualquer
-tom, e progressões podem ser salvas e recarregadas.
+Point it at a YouTube link or a local file, and it detects the chords itself —
+no tabs, no chart, no internet round-trip. Everything runs on your machine:
+a Rust shell owns the window and the analysis pipeline, a short-lived Python
+worker does the actual listening, and the result is cached so you only pay
+for it once per song.
 
-## Rodar
+## What it does
+
+### Play along
+
+Search a song on YouTube or open a file from disk. Chords are detected
+locally and run on a timeline synced to the audio, drawn live on a guitar
+neck. Everything you open is kept in a repertoire and reopens instantly —
+no re-importing, no re-analyzing.
+
+<img src="docs/screenshots/tocar-junto.png" alt="Play-along view: search bar and repertoire" width="820" />
+
+### Scales
+
+Every major scale, mode, pentatonic and blues shape, in any key, across the
+whole neck. Pick a scale directly, or pick a key and see everything that fits
+over it — the seven modes, both pentatonics, the blues scale — labeled by
+scale degree or by note name.
+
+<img src="docs/screenshots/escalas.png" alt="Scales view: A minor pentatonic across the fretboard" width="820" />
+
+### Progressions
+
+Build a chord sequence and hear each chord as it's added. The app infers the
+key from what you've built and suggests what tends to come next, with the
+reasoning ("V — pulls toward the tonic"). Twelve well-known progressions —
+pop, jazz, blues, the Andalusian cadence, Pachelbel's canon — can be loaded in
+any key, and your own progressions save and reload.
+
+<img src="docs/screenshots/progressoes.png" alt="Progressions view: chord suggestions and known patterns in C major" width="820" />
+
+## How it's built
+
+```text
+Svelte 5 + TypeScript
+   │ typed commands
+Tauri boundary (Rust)
+   ├── native dialogs
+   ├── subprocess supervision   (process.rs)
+   ├── chord analysis           (analysis.rs)
+   └── on-disk cache
+        │ bounded JSON, one invocation per song
+   Python worker (LV-Chordia + torch)
+```
+
+- **Frontend** — Svelte 5 + TypeScript. Pure calculation (which chord is
+  sounding, where the playhead sits, time formatting) lives in tested modules
+  outside the DOM, so playback sync is testable without opening a window.
+- **Shell** — Rust via Tauri 2. Deliberately thin: window, native dialogs,
+  subprocess supervision, output validation, disk cache. No business logic
+  duplicated from the worker.
+- **Analysis** — a short-lived Python process running
+  [LV-Chordia](https://github.com/openmirlab/lv-chordia) does chord
+  recognition. It is the *only* authority on what chord is sounding; Rust
+  validates the shape of its output (timestamps finite and ordered, confidence
+  in range, no gaps) and rejects malformed results — it never rewrites or
+  smooths a label.
+- **Cache** — analysis is expensive the first time (~30s model load, then
+  ~30x real time) and deterministic, so results are keyed by the **content**
+  hash of the audio, not its path. Renaming or moving a file never forces a
+  re-analysis.
+
+Full write-up, including where this diverges on purpose from the project it
+was inspired by, in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+(Portuguese).
+
+## Built on
+
+- Chord detection by [LV-Chordia](https://github.com/openmirlab/lv-chordia)
+- Chord shapes from [chords-db](https://github.com/tombatossals/chords-db)
+- Audio import via [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- Desktop shell: [Tauri](https://tauri.app/) + [Svelte](https://svelte.dev/)
+
+Architecture inspired by SonArcan, with deliberate divergences documented in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Run it
 
 ```bash
-# uma vez
+# once
 brew install ffmpeg yt-dlp
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 npm install
 uv sync --directory tools/chord-worker
 
-# desenvolvimento
+# development
 npm run tauri dev
 
-# gerar o aplicativo
+# build the app
 npm run tauri build
 cp -R src-tauri/target/release/bundle/macos/Musica.app /Applications/
 xattr -dr com.apple.quarantine /Applications/Musica.app
 ```
 
-> O aplicativo instalado depende deste repositório continuar onde está: o
-> pacote traz apenas o lançador do worker de acordes, que aponta para o
-> ambiente Python em `tools/chord-worker/.venv`. O motivo está em
-> [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+> The installed app depends on this repository staying put: the bundle only
+> ships the chord-worker launcher, which points at the Python environment in
+> `tools/chord-worker/.venv`. Why, in
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Verificar
+## Verify
 
 ```bash
-npm test          # lógica pura do frontend
-npm run check     # tipos
+npm test          # pure frontend logic
+npm run check     # types
 cargo test --manifest-path src-tauri/Cargo.toml
 uv run --directory tools/chord-worker pytest
 ```
 
-## Construído sobre
+## License
 
-Detecção de acordes por [LV-Chordia](https://github.com/openmirlab/lv-chordia),
-formas de acorde do [chords-db](https://github.com/tombatossals/chords-db),
-importação por [yt-dlp](https://github.com/yt-dlp/yt-dlp), casca desktop em
-[Tauri](https://tauri.app/) com [Svelte](https://svelte.dev/).
-
-Arquitetura inspirada no [SonArcan](https://github.com/), com as divergências
-deliberadas registradas em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+[MIT](LICENSE) © João Victor Balvedi

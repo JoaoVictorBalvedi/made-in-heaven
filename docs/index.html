@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Musica — chords, live, on the fretboard</title>
+<meta name="description" content="A native desktop app that listens to a song and shows you the chords live on a guitar neck. Built with Svelte, Tauri and Rust — nothing sent to a server." />
+<link rel="icon" href="screenshots/icon.png" />
+<style>
+  :root {
+    --ground: #08080a;
+    --surface: #101014;
+    --surface-raised: #16161c;
+    --line: #1e1e26;
+    --line-strong: #343440;
+    --ink: #f2f0ec;
+    --ink-dim: #85858f;
+    --accent: #f2f0ec;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding-inline: 24px;
+  }
+
+  /* ---- hero ---- */
+  header.hero {
+    padding-block: 96px 72px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(242,240,236,0.06), transparent 70%),
+      var(--ground);
+  }
+  .hero img.icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    margin: 0 auto 28px;
+    box-shadow: 0 0 0 1px var(--line-strong), 0 30px 60px -20px rgba(0,0,0,0.8);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    margin: 0 0 14px;
+    letter-spacing: 0.01em;
+  }
+  .tagline {
+    color: var(--ink-dim);
+    font-size: 1.15rem;
+    max-width: 40em;
+    margin: 0 auto 36px;
+  }
+  .cta-row {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 0.7rem 1.4rem;
+    font-size: 0.95rem;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .btn:hover { border-color: var(--ink-dim); background: var(--surface); }
+  .btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .btn.primary:hover { background: #d8d6d0; border-color: #d8d6d0; }
+
+  .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+  }
+
+  /* ---- sections ---- */
+  section { padding-block: 64px; border-top: 1px solid var(--line); }
+  section > .wrap > h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.9rem;
+    margin: 0 0 8px;
+  }
+  section > .wrap > p.lede {
+    color: var(--ink-dim);
+    max-width: 46em;
+    margin: 0 0 40px;
+  }
+
+  .feature {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+    padding-block: 40px;
+  }
+  .feature:not(:last-child) { border-bottom: 1px solid var(--line); }
+  .feature.reverse .feature-text { order: 2; }
+  .feature.reverse .feature-shot { order: 1; }
+  .feature-shot {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .feature-text h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.5rem;
+    margin: 0 0 12px;
+  }
+  .feature-text p { color: var(--ink-dim); margin: 0; }
+  .feature-text p + p { margin-top: 12px; }
+
+  @media (max-width: 760px) {
+    .feature, .feature.reverse { grid-template-columns: 1fr; }
+    .feature.reverse .feature-text,
+    .feature.reverse .feature-shot { order: initial; }
+  }
+
+  /* ---- architecture ---- */
+  pre.diagram {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--ink-dim);
+  }
+  pre.diagram strong { color: var(--ink); font-weight: 400; }
+
+  .stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 28px;
+  }
+  .stack span {
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+
+  /* ---- credits / footer ---- */
+  .credits-list { color: var(--ink-dim); padding-left: 0; list-style: none; margin: 0; }
+  .credits-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .credits-list li:last-child { border-bottom: none; }
+  .credits-list a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+  .credits-list a:hover { text-decoration-color: var(--ink-dim); }
+
+  footer { padding-block: 48px; text-align: center; color: var(--ink-dim); font-size: 0.9rem; border-top: 1px solid var(--line); }
+  footer a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+  footer a:hover { text-decoration-color: var(--ink-dim); }
+  footer .foot-links { margin-top: 10px; display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <img class="icon" src="screenshots/icon.png" alt="Musica app icon: an engraved vinyl record" />
+    <h1>Musica</h1>
+    <p class="tagline">
+      A native desktop app that listens to a song and shows you the chords —
+      live, on a guitar neck, with nothing sent to a server.
+    </p>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/JoaoVictorBalvedi/made-in-heaven">View on GitHub</a>
+      <a class="btn" href="https://github.com/JoaoVictorBalvedi/made-in-heaven#run-it">Run it locally</a>
+      <a class="btn" href="https://github.com/JoaoVictorBalvedi/made-in-heaven/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+    </div>
+    <div class="badges">
+      <span class="badge">macOS · Windows</span>
+      <span class="badge">Svelte 5</span>
+      <span class="badge">Tauri 2</span>
+      <span class="badge">Rust</span>
+      <span class="badge">MIT license</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="lede">
+      Search a song or open a file. The rest — hearing it, naming the chords,
+      keeping them in sync — happens on your machine.
+    </p>
+
+    <div class="feature">
+      <div class="feature-shot">
+        <img src="screenshots/tocar-junto.png" alt="Play-along view with a search bar and an empty repertoire" />
+      </div>
+      <div class="feature-text">
+        <h3>Play along</h3>
+        <p>
+          Search a song on YouTube or open a file from disk. Chords are
+          detected locally and run on a timeline synced to the audio, drawn
+          live on a guitar neck.
+        </p>
+        <p>
+          Everything you open is kept in a repertoire and reopens instantly —
+          no re-importing, no re-analyzing.
+        </p>
+      </div>
+    </div>
+
+    <div class="feature reverse">
+      <div class="feature-shot">
+        <img src="screenshots/escalas.png" alt="Scales view showing A minor pentatonic across the fretboard" />
+      </div>
+      <div class="feature-text">
+        <h3>Scales</h3>
+        <p>
+          Every major scale, mode, pentatonic and blues shape, in any key,
+          across the whole neck.
+        </p>
+        <p>
+          Pick a scale directly, or pick a key and see everything that fits
+          over it — the seven modes, both pentatonics, the blues scale —
+          labeled by scale degree or by note name.
+        </p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-shot">
+        <img src="screenshots/progressoes.png" alt="Progressions view with chord suggestions and known patterns in C major" />
+      </div>
+      <div class="feature-text">
+        <h3>Progressions</h3>
+        <p>
+          Build a chord sequence and hear each chord as it's added. The app
+          infers the key from what you've built and suggests what tends to
+          come next, with the reasoning.
+        </p>
+        <p>
+          Twelve well-known progressions — pop, jazz, blues, the Andalusian
+          cadence, Pachelbel's canon — load in any key, and your own
+          progressions save and reload.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>How it's built</h2>
+    <p class="lede">
+      No server, no browser — a Rust shell owns the window and the analysis
+      pipeline, a short-lived Python worker does the actual listening.
+    </p>
+    <pre class="diagram"><strong>Svelte 5 + TypeScript</strong>
+   │ typed commands
+<strong>Tauri boundary (Rust)</strong>
+   ├── native dialogs
+   ├── subprocess supervision   (process.rs)
+   ├── chord analysis           (analysis.rs)
+   └── on-disk cache
+        │ bounded JSON, one invocation per song
+   <strong>Python worker (LV-Chordia + torch)</strong></pre>
+    <p class="lede" style="margin-top: 28px; margin-bottom: 0;">
+      Analysis is expensive the first time (~30s model load, then ~30x real
+      time) and deterministic, so results are cached by the content hash of
+      the audio — renaming or moving a file never forces a re-analysis.
+    </p>
+    <div class="stack">
+      <span>Svelte 5</span>
+      <span>TypeScript</span>
+      <span>Vite</span>
+      <span>Tauri 2</span>
+      <span>Rust</span>
+      <span>Python</span>
+      <span>LV-Chordia</span>
+      <span>yt-dlp</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Built on</h2>
+    <ul class="credits-list">
+      <li>Chord detection by <a href="https://github.com/openmirlab/lv-chordia">LV-Chordia</a></li>
+      <li>Chord shapes from <a href="https://github.com/tombatossals/chords-db">chords-db</a></li>
+      <li>Audio import via <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a></li>
+      <li>Desktop shell: <a href="https://tauri.app/">Tauri</a> + <a href="https://svelte.dev/">Svelte</a></li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div>Musica — MIT licensed, built by <a href="https://github.com/JoaoVictorBalvedi">João Victor Balvedi</a></div>
+  <div class="foot-links">
+    <a href="https://github.com/JoaoVictorBalvedi/made-in-heaven">Repository</a>
+    <a href="https://github.com/JoaoVictorBalvedi/made-in-heaven/blob/main/docs/ARCHITECTURE.md">Architecture notes</a>
+    <a href="https://github.com/JoaoVictorBalvedi/made-in-heaven/blob/main/LICENSE">License</a>
+  </div>
+</footer>
+
+</body>
+</html>
