@@ -573,23 +573,13 @@
     <h2>Run it yourself</h2>
     <p class="lede">
       There's no installer to download — the packaged app only runs on the
-      machine that built it. Getting it running means building it yourself:
-      five commands, no Rust or Python experience required.
+      machine that built it, so getting it running means building it
+      yourself. Full step-by-step commands for macOS and Windows, plus the
+      test suite, live in the README so they never go stale in two places.
     </p>
-    <pre class="diagram">git clone https://github.com/JoaoVictorBalvedi/made-in-heaven.git
-cd made-in-heaven
-brew install ffmpeg yt-dlp uv
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-npm install
-uv sync --directory tools/chord-worker
-
-npm run tauri dev</pre>
-    <p class="lede" style="margin-top: 20px; margin-bottom: 0;">
-      Full install, build, and test commands (<code class="inline">npm test</code>,
-      <code class="inline">cargo test</code>, <code class="inline">pytest</code>) are
-      in the
-      <a href="https://github.com/JoaoVictorBalvedi/made-in-heaven#run-it" style="text-decoration: underline; text-decoration-color: var(--line-strong);">README</a>.
-    </p>
+    <a class="btn primary" href="https://github.com/JoaoVictorBalvedi/made-in-heaven#run-it">
+      Installation steps on GitHub →
+    </a>
   </div>
 </section>
 

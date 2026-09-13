@@ -106,10 +106,11 @@ Architecture inspired by SonArcan, with deliberate divergences documented in
 
 There's no installer to download: the packaged app only works on the machine
 that built it (more on why below), so getting it running means building it
-yourself — five commands, no Rust or Python experience required.
+yourself.
+
+### macOS
 
 ```bash
-# once
 git clone https://github.com/JoaoVictorBalvedi/made-in-heaven.git
 cd made-in-heaven
 brew install ffmpeg yt-dlp uv
@@ -117,18 +118,33 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 npm install
 uv sync --directory tools/chord-worker
 
-# development
-npm run tauri dev
-
-# build the app — macOS
-npm run tauri build
+npm run tauri dev      # development
+npm run tauri build    # build the app
 cp -R src-tauri/target/release/bundle/macos/Musica.app /Applications/
 xattr -dr com.apple.quarantine /Applications/Musica.app
-
-# build the app — Windows
-npm run tauri build
-# installer lands in src-tauri\target\release\bundle\ (.msi and .exe/nsis) — run it directly
 ```
+
+### Windows
+
+```powershell
+git clone https://github.com/JoaoVictorBalvedi/made-in-heaven.git
+cd made-in-heaven
+winget install Gyan.FFmpeg yt-dlp.yt-dlp astral-sh.uv Rustlang.Rustup
+npm install
+uv sync --directory tools/chord-worker
+
+npm run tauri dev      # development
+npm run tauri build    # build the app -> installer under
+                        # src-tauri\target\release\bundle\ (.msi and .exe) — run it directly
+```
+
+> Tauri also needs the "Desktop development with C++" workload from the
+> [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+> and the WebView2 runtime, already installed on most Windows 10/11 machines.
+> See [Tauri's Windows prerequisites](https://v2.tauri.app/start/prerequisites/)
+> if `npm run tauri dev` fails to find a C++ linker. This repository has only
+> been built and tested on macOS so far — the Windows steps follow Tauri's
+> documented prerequisites but haven't been run end to end here.
 
 > The built app only works on the machine that built it. The bundle ships a
 > chord-worker launcher whose shebang is the exact, absolute path to the
