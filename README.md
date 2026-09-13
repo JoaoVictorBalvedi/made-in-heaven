@@ -36,7 +36,7 @@ locally and run on a timeline synced to the audio, drawn live on a guitar
 neck. Everything you open is kept in a repertoire and reopens instantly —
 no re-importing, no re-analyzing.
 
-<img src="docs/screenshots/tocar-junto.png" alt="Play-along view: search bar and repertoire" width="820" />
+<img src="docs/screenshots/tocar-junto.png" alt="Play-along view: Daft Punk's Get Lucky loaded, with the current chord, its fretboard shape, and the full chord list" width="820" />
 
 ### Scales
 
