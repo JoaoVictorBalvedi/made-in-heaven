@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/icon.png" width="96" alt="Musica icon" />
+  <img src="docs/screenshots/icon.png" width="96" alt="Made in Heaven icon" />
 </p>
 
 <h1 align="center">Made in Heaven</h1>
