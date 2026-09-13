@@ -16,8 +16,11 @@
     --ink: #f2f0ec;
     --ink-dim: #85858f;
     --accent: #f2f0ec;
+    --glow-a: #caa15a;
+    --glow-b: #5a4fb0;
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -32,6 +35,21 @@
   img { max-width: 100%; display: block; }
   a { color: inherit; }
 
+  /* Ambient glow, fixed behind the whole page — the same two-corners trick
+     the app itself uses behind the vinyl, tinted from whatever song is
+     playing. There's no song here, so it's fixed on two colors instead. */
+  .ambient {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 85% at 12% -12%, color-mix(in oklab, var(--glow-a) 38%, transparent), transparent 68%),
+      radial-gradient(110% 85% at 92% 8%, color-mix(in oklab, var(--glow-b) 34%, transparent), transparent 66%),
+      radial-gradient(90% 70% at 50% 115%, color-mix(in oklab, var(--glow-b) 22%, transparent), transparent 70%),
+      var(--ground);
+  }
+
   .wrap {
     max-width: 980px;
     margin: 0 auto;
@@ -42,16 +60,15 @@
   header.hero {
     padding-block: 96px 72px;
     text-align: center;
-    background:
-      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(242,240,236,0.06), transparent 70%),
-      var(--ground);
   }
   .hero img.icon {
     width: 96px;
     height: 96px;
     border-radius: 50%;
     margin: 0 auto 28px;
-    box-shadow: 0 0 0 1px var(--line-strong), 0 30px 60px -20px rgba(0,0,0,0.8);
+    box-shadow:
+      0 0 0 1px var(--line-strong),
+      0 30px 70px -20px color-mix(in oklab, var(--glow-a) 55%, transparent);
   }
   h1 {
     font-family: var(--serif);
@@ -82,11 +99,15 @@
     border-radius: 999px;
     padding: 0.7rem 1.4rem;
     font-size: 0.95rem;
-    transition: border-color 120ms ease, background 120ms ease;
+    transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
   }
   .btn:hover { border-color: var(--ink-dim); background: var(--surface); }
   .btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); }
-  .btn.primary:hover { background: #d8d6d0; border-color: #d8d6d0; }
+  .btn.primary:hover {
+    background: #d8d6d0;
+    border-color: #d8d6d0;
+    box-shadow: 0 8px 24px -10px color-mix(in oklab, var(--glow-a) 70%, transparent);
+  }
 
   .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
   .badge {
@@ -96,6 +117,7 @@
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 0.3rem 0.75rem;
+    background: color-mix(in oklab, var(--ground) 80%, black);
   }
 
   /* ---- sections ---- */
@@ -110,6 +132,14 @@
     color: var(--ink-dim);
     max-width: 46em;
     margin: 0 0 40px;
+  }
+  .eyebrow {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--glow-a) 70%, var(--ink-dim));
+    margin-bottom: 10px;
   }
 
   .feature {
@@ -152,6 +182,7 @@
     overflow-x: auto;
     font-size: 0.85rem;
     line-height: 1.5;
+    font-family: var(--mono);
     color: var(--ink-dim);
   }
   pre.diagram strong { color: var(--ink); font-weight: 400; }
@@ -170,6 +201,91 @@
     color: var(--ink);
   }
 
+  /* ---- principles ---- */
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .principle {
+    background: var(--surface);
+    padding: 28px 24px;
+  }
+  .principle h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.15rem;
+    margin: 0 0 10px;
+  }
+  .principle p { color: var(--ink-dim); margin: 0; font-size: 0.92rem; }
+  @media (max-width: 700px) {
+    .principles { grid-template-columns: 1fr; }
+  }
+
+  /* ---- progressions grid ---- */
+  .prog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .prog-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    background: var(--surface);
+  }
+  .prog-card .roman {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+  }
+  .prog-card .mood {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin: 4px 0 10px;
+  }
+  .prog-card p {
+    color: var(--ink-dim);
+    font-size: 0.88rem;
+    margin: 0 0 12px;
+  }
+  .prog-card .chords {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--ink);
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+  }
+
+  /* ---- scale chips ---- */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chips span {
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 0.5rem 1.05rem;
+    font-size: 0.88rem;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color 120ms ease;
+  }
+  .chips span:hover { border-color: color-mix(in oklab, var(--glow-a) 60%, var(--line-strong)); }
+
+  /* ---- get started ---- */
+  code.inline {
+    font-family: var(--mono);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 0.1em 0.4em;
+    font-size: 0.9em;
+  }
+
   /* ---- credits / footer ---- */
   .credits-list { color: var(--ink-dim); padding-left: 0; list-style: none; margin: 0; }
   .credits-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
@@ -185,6 +301,8 @@
 </head>
 <body>
 
+<div class="ambient" aria-hidden="true"></div>
+
 <header class="hero">
   <div class="wrap">
     <img class="icon" src="screenshots/icon.png" alt="Musica app icon: an engraved vinyl record" />
@@ -195,14 +313,14 @@
     </p>
     <div class="cta-row">
       <a class="btn primary" href="https://github.com/JoaoVictorBalvedi/made-in-heaven">View on GitHub</a>
-      <a class="btn" href="https://github.com/JoaoVictorBalvedi/made-in-heaven#run-it">Run it locally</a>
+      <a class="btn" href="#get-started">Run it locally</a>
       <a class="btn" href="https://github.com/JoaoVictorBalvedi/made-in-heaven/blob/main/docs/ARCHITECTURE.md">Architecture</a>
     </div>
     <div class="badges">
       <span class="badge">macOS · Windows</span>
+      <span class="badge">Local-first, no server</span>
       <span class="badge">Svelte 5</span>
-      <span class="badge">Tauri 2</span>
-      <span class="badge">Rust</span>
+      <span class="badge">Tauri 2 + Rust</span>
       <span class="badge">MIT license</span>
     </div>
   </div>
@@ -210,10 +328,12 @@
 
 <section>
   <div class="wrap">
-    <h2>What it does</h2>
+    <span class="eyebrow">What it does</span>
+    <h2>Three ways to look at a fretboard</h2>
     <p class="lede">
       Search a song or open a file. The rest — hearing it, naming the chords,
-      keeping them in sync — happens on your machine.
+      keeping them in sync — happens on your machine, in a Rust process you
+      can watch in Activity Monitor if you don't believe it.
     </p>
 
     <div class="feature">
@@ -225,11 +345,12 @@
         <p>
           Search a song on YouTube or open a file from disk. Chords are
           detected locally and run on a timeline synced to the audio, drawn
-          live on a guitar neck.
+          live on a guitar neck as the song plays.
         </p>
         <p>
           Everything you open is kept in a repertoire and reopens instantly —
-          no re-importing, no re-analyzing.
+          no re-importing, no re-analyzing, no waiting through the same
+          30-second model load twice.
         </p>
       </div>
     </div>
@@ -247,7 +368,7 @@
         <p>
           Pick a scale directly, or pick a key and see everything that fits
           over it — the seven modes, both pentatonics, the blues scale —
-          labeled by scale degree or by note name.
+          labeled by scale degree or by note name, whichever you think in.
         </p>
       </div>
     </div>
@@ -261,7 +382,7 @@
         <p>
           Build a chord sequence and hear each chord as it's added. The app
           infers the key from what you've built and suggests what tends to
-          come next, with the reasoning.
+          come next, with the reasoning ("V — pulls toward the tonic").
         </p>
         <p>
           Twelve well-known progressions — pop, jazz, blues, the Andalusian
@@ -275,10 +396,121 @@
 
 <section>
   <div class="wrap">
-    <h2>How it's built</h2>
+    <span class="eyebrow">Progressions library</span>
+    <h2>Twelve patterns, in any key</h2>
     <p class="lede">
-      No server, no browser — a Rust shell owns the window and the analysis
-      pipeline, a short-lived Python worker does the actual listening.
+      Shown here in C. Pick a different tonic in the app and every chord below
+      transposes with it.
+    </p>
+    <div class="prog-grid">
+      <div class="prog-card">
+        <span class="roman">I – V – vi – IV</span>
+        <span class="mood">Pop's four-chord backbone</span>
+        <p>The turnaround that carries a good chunk of the last few decades of pop.</p>
+        <div class="chords">C · G · Am · F</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">vi – IV – I – V</span>
+        <span class="mood">Same four chords, minor start</span>
+        <p>The same four chords starting on the relative minor — and it changes everything.</p>
+        <div class="chords">Am · F · C · G</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">I – vi – IV – V</span>
+        <span class="mood">The '50s sound</span>
+        <p>The sound of the 1950s, and nearly every ballad written since.</p>
+        <div class="chords">C · Am · F · G</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">i – ♭VII – ♭VI – V</span>
+        <span class="mood">Andalusian cadence</span>
+        <p>The bass walks down half-step by half-step to the dominant.</p>
+        <div class="chords">Cm · A# · G# · G</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">i – ♭VI – ♭III – ♭VII</span>
+        <span class="mood">Epic, cinematic</span>
+        <p>Minor that never resolves: it circles without arriving, which is why it sounds big.</p>
+        <div class="chords">Cm · G# · D# · A#</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">i – iv – v</span>
+        <span class="mood">Old, sad</span>
+        <p>Pure natural minor, no major dominant. Sounds modal, almost folk.</p>
+        <div class="chords">Cm · Fm · Gm</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">ii7 – V7 – Imaj7</span>
+        <span class="mood">Jazz cadence</span>
+        <p>The cadence that organizes practically every jazz standard.</p>
+        <div class="chords">Dm7 · G7 · Cmaj7</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">I7 – IV7 – V7</span>
+        <span class="mood">Blues</span>
+        <p>Three dominant-seventh chords; the twelve-bar form is born from this.</p>
+        <div class="chords">C7 · F7 · G7</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">I – V – vi – iii – IV – I – IV – V</span>
+        <span class="mood">Pachelbel's canon</span>
+        <p>The sequence from Pachelbel's Canon, recycled for three centuries.</p>
+        <div class="chords">C · G · Am · Em · F · C · F · G</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">I – ♭VII – IV</span>
+        <span class="mood">Rock, sunny</span>
+        <p>The ♭VII borrows from outside the major key and takes the weight off the dominant.</p>
+        <div class="chords">C · A# · F</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">I – V/vii – vi – I/v</span>
+        <span class="mood">Descending, soft</span>
+        <p>The harmony barely moves — what descends is the bass, step by step.</p>
+        <div class="chords">C · G · Am · Em</div>
+      </div>
+      <div class="prog-card">
+        <span class="roman">i – ♭VII – ♭VI – ♭VII</span>
+        <span class="mood">Dramatic, cyclical</span>
+        <p>Descends and returns without resolving, building tension that never releases.</p>
+        <div class="chords">Cm · A# · G# · A#</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Scales & modes</span>
+    <h2>Everything that fits over a key</h2>
+    <p class="lede">
+      All eleven, drawn across the whole neck, switchable between scale
+      degrees and note names.
+    </p>
+    <div class="chips">
+      <span>Major</span>
+      <span>Natural minor</span>
+      <span>Harmonic minor</span>
+      <span>Minor pentatonic</span>
+      <span>Major pentatonic</span>
+      <span>Blues</span>
+      <span>Dorian</span>
+      <span>Phrygian</span>
+      <span>Lydian</span>
+      <span>Mixolydian</span>
+      <span>Locrian</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">How it's built</span>
+    <h2>No server, no browser</h2>
+    <p class="lede">
+      A Rust shell owns the window and the analysis pipeline; a short-lived
+      Python worker does the actual listening. Nothing about the song ever
+      leaves the machine.
     </p>
     <pre class="diagram"><strong>Svelte 5 + TypeScript</strong>
    │ typed commands
@@ -289,11 +521,6 @@
    └── on-disk cache
         │ bounded JSON, one invocation per song
    <strong>Python worker (LV-Chordia + torch)</strong></pre>
-    <p class="lede" style="margin-top: 28px; margin-bottom: 0;">
-      Analysis is expensive the first time (~30s model load, then ~30x real
-      time) and deterministic, so results are cached by the content hash of
-      the audio — renaming or moving a file never forces a re-analysis.
-    </p>
     <div class="stack">
       <span>Svelte 5</span>
       <span>TypeScript</span>
@@ -309,7 +536,65 @@
 
 <section>
   <div class="wrap">
-    <h2>Built on</h2>
+    <span class="eyebrow">Design principles</span>
+    <h2>A few rules the codebase holds to</h2>
+    <div class="principles">
+      <div class="principle">
+        <h3>The model is the only authority</h3>
+        <p>
+          Rust checks that the worker's output is well-formed — timestamps
+          finite and ordered, confidence in range, no gaps — and rejects what
+          isn't. It never rewrites or smooths a chord label itself.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>Cached by content, not by path</h3>
+        <p>
+          Analysis is keyed by the SHA-256 of the audio itself. Renaming or
+          moving a file never forces a re-analysis, and an unreadable cache
+          degrades to slowness — never to an error on screen.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>Built for the scope it has</h3>
+        <p>
+          No time-stretch engine, no beat or BPM detection, no dictionary
+          picker — features a reference project has that this app leaves out
+          on purpose, because a one-user tool doesn't need to carry them.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="get-started">
+  <div class="wrap">
+    <span class="eyebrow">Get started</span>
+    <h2>Run it yourself</h2>
+    <p class="lede">
+      Needs <code class="inline">ffmpeg</code>, <code class="inline">yt-dlp</code>,
+      Rust and <code class="inline">uv</code> once. After that, it's a normal
+      Tauri app.
+    </p>
+    <pre class="diagram">brew install ffmpeg yt-dlp
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+npm install
+uv sync --directory tools/chord-worker
+
+npm run tauri dev</pre>
+    <p class="lede" style="margin-top: 20px; margin-bottom: 0;">
+      Full install, build, and test commands (<code class="inline">npm test</code>,
+      <code class="inline">cargo test</code>, <code class="inline">pytest</code>) are
+      in the
+      <a href="https://github.com/JoaoVictorBalvedi/made-in-heaven#run-it" style="text-decoration: underline; text-decoration-color: var(--line-strong);">README</a>.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Built on</span>
+    <h2>Credits</h2>
     <ul class="credits-list">
       <li>Chord detection by <a href="https://github.com/openmirlab/lv-chordia">LV-Chordia</a></li>
       <li>Chord shapes from <a href="https://github.com/tombatossals/chords-db">chords-db</a></li>
