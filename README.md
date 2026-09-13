@@ -104,9 +104,15 @@ Architecture inspired by SonArcan, with deliberate divergences documented in
 
 ## Run it
 
+There's no installer to download: the packaged app only works on the machine
+that built it (more on why below), so getting it running means building it
+yourself — five commands, no Rust or Python experience required.
+
 ```bash
 # once
-brew install ffmpeg yt-dlp
+git clone https://github.com/JoaoVictorBalvedi/made-in-heaven.git
+cd made-in-heaven
+brew install ffmpeg yt-dlp uv
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 npm install
 uv sync --directory tools/chord-worker
@@ -114,15 +120,23 @@ uv sync --directory tools/chord-worker
 # development
 npm run tauri dev
 
-# build the app
+# build the app — macOS
 npm run tauri build
 cp -R src-tauri/target/release/bundle/macos/Musica.app /Applications/
 xattr -dr com.apple.quarantine /Applications/Musica.app
+
+# build the app — Windows
+npm run tauri build
+# installer lands in src-tauri\target\release\bundle\ (.msi and .exe/nsis) — run it directly
 ```
 
-> The installed app depends on this repository staying put: the bundle only
-> ships the chord-worker launcher, which points at the Python environment in
-> `tools/chord-worker/.venv`. Why, in
+> The built app only works on the machine that built it. The bundle ships a
+> chord-worker launcher whose shebang is the exact, absolute path to the
+> Python environment `uv sync` created in `tools/chord-worker/.venv` — copy
+> the `.app`/installer to another machine (or move this repository afterward)
+> and analysis breaks, even though opening and playing a file still works.
+> Embedding Python and the model weights instead would cost close to a
+> gigabyte, which is more than a personal, single-user tool needs. Why, in
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Verify

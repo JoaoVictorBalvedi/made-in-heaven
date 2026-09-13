@@ -572,11 +572,13 @@
     <span class="eyebrow">Get started</span>
     <h2>Run it yourself</h2>
     <p class="lede">
-      Needs <code class="inline">ffmpeg</code>, <code class="inline">yt-dlp</code>,
-      Rust and <code class="inline">uv</code> once. After that, it's a normal
-      Tauri app.
+      There's no installer to download — the packaged app only runs on the
+      machine that built it. Getting it running means building it yourself:
+      five commands, no Rust or Python experience required.
     </p>
-    <pre class="diagram">brew install ffmpeg yt-dlp
+    <pre class="diagram">git clone https://github.com/JoaoVictorBalvedi/made-in-heaven.git
+cd made-in-heaven
+brew install ffmpeg yt-dlp uv
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 npm install
 uv sync --directory tools/chord-worker
